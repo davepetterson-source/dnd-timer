@@ -25,7 +25,6 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.NumberPicker;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -76,10 +75,12 @@ public class MainActivity extends Activity {
     private LinearLayout cardSilent;
     private LinearLayout cardDnd;
     private Switch musicSwitch;
-    private NumberPicker wheel;
-    private LinearLayout pill;
-    private ImageView pillIcon;
-    private TextView pillText;
+    private OdometerView wheel;
+    private TextView musicState;
+    private LinearLayout musicRow;
+    private LinearLayout goBar;
+    private ImageView goIcon;
+    private TextView goText;
     private TextView startLabel;
     private TextView startVal;
     private TextView startDay;
@@ -169,33 +170,21 @@ public class MainActivity extends Activity {
         zz.setImageResource(R.drawable.ic_moon_zz);
         FrameLayout.LayoutParams zl = new FrameLayout.LayoutParams(dp(54), dp(54),
                 Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        zl.topMargin = dp(20);
+        zl.topMargin = dp(24);
         ringBox.addView(zz, zl);
 
         LinearLayout centre = new LinearLayout(this);
         centre.setOrientation(LinearLayout.VERTICAL);
         centre.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        centre.setPadding(0, dp(74), 0, 0);
+        centre.setPadding(0, dp(86), 0, 0);
         clockView = text("", 21, WHITE, true);
         clockView.setGravity(Gravity.CENTER);
         ringLabel = text("", 13, MUTED, false);
         ringLabel.setGravity(Gravity.CENTER);
-
-        pill = new LinearLayout(this);
-        pill.setGravity(Gravity.CENTER);
-        pill.setPadding(dp(16), 0, dp(16), 0);
-        pillIcon = icon(R.drawable.ic_play, 14, WHITE);
-        pillText = text("", 15, WHITE, true);
-        pillText.setLetterSpacing(0.05f);
-        pill.addView(pillIcon, new LinearLayout.LayoutParams(dp(14), dp(14)));
-        pill.addView(pillText, lin(WRAP, WRAP, 0f, 7, 0, 0, 0));
-        pill.setOnClickListener(v -> toggle());
-
-        centre.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(48)));
+        centre.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(52)));
         centre.addView(ringLabel, new LinearLayout.LayoutParams(MATCH, dp(16)));
-        centre.addView(pill, lin(WRAP, dp(34), 0f, 0, 4, 0, 0));
         ringBox.addView(centre, new FrameLayout.LayoutParams(MATCH, MATCH));
-        ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(210), dp(210), Gravity.CENTER));
+        ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(200), dp(200), Gravity.CENTER));
 
         TextView hand = text("Better Sleep Brighter Days", 20, 0xFFAAB6DF, false);
         hand.setTypeface(Typeface.create("cursive", Typeface.NORMAL));
@@ -205,7 +194,7 @@ public class MainActivity extends Activity {
         hl.topMargin = dp(84);
         hl.rightMargin = dp(8);
         ringCard.addView(hand, hl);
-        col.addView(ringCard, lin(MATCH, dp(222), 0f, 0, 8, 0, 0));
+        col.addView(ringCard, lin(MATCH, dp(214), 0f, 0, 8, 0, 0));
 
         // Choose mode
         LinearLayout modeHead = new LinearLayout(this);
@@ -219,10 +208,8 @@ public class MainActivity extends Activity {
         modeHead.addView(whatsThis, new LinearLayout.LayoutParams(WRAP, dp(26)));
         col.addView(modeHead, lin(MATCH, dp(26), 0f, 0, 8, 0, 0));
 
-        cardSilent = modeCard(R.drawable.ic_speaker_off, 0xFF7A3FD0, "Silent",
-                "No calls, no notifications, no sounds. Full silence.");
-        cardDnd = modeCard(R.drawable.ic_bell, 0xFF2F6BFF, "Do Not Disturb",
-                "Calls from selected contacts can ring through.");
+        cardSilent = modeCard(R.drawable.ic_speaker_off, 0xFF7A3FD0, "Silent");
+        cardDnd = modeCard(R.drawable.ic_bell, 0xFF2F6BFF, "Do Not Disturb");
         cardSilent.setOnClickListener(v -> chooseMode(Dnd.SILENT));
         cardDnd.setOnClickListener(v -> chooseMode(Dnd.DND));
 
@@ -230,13 +217,12 @@ public class MainActivity extends Activity {
         row.setBaselineAligned(false);
         row.addView(cardSilent, lin(0, MATCH, 1f, 0, 0, 5, 0));
         row.addView(cardDnd, lin(0, MATCH, 1f, 5, 0, 0, 0));
-        col.addView(row, lin(MATCH, WRAP, 0f, 0, 6, 0, 0));
+        col.addView(row, lin(MATCH, dp(40), 0f, 0, 4, 0, 0));
 
         // Keep music playing
-        LinearLayout musicRow = new LinearLayout(this);
+        musicRow = new LinearLayout(this);
         musicRow.setGravity(Gravity.CENTER_VERTICAL);
         musicRow.setPadding(dp(12), 0, dp(12), 0);
-        musicRow.setBackground(rect(0x38146E6E, 0x7346D2BE, 1, 16));
         musicRow.addView(iconCircle(R.drawable.ic_music, 0xFF17A596, 30, 17), new LinearLayout.LayoutParams(dp(30), dp(30)));
         LinearLayout mt = new LinearLayout(this);
         mt.setOrientation(LinearLayout.VERTICAL);
@@ -245,13 +231,17 @@ public class MainActivity extends Activity {
         musicRow.addView(mt, lin(0, WRAP, 1f, 10, 0, 0, 0));
         musicSwitch = new Switch(this);
         musicSwitch.setThumbTintList(new ColorStateList(
-                new int[][]{{android.R.attr.state_checked}, {}}, new int[]{WHITE, 0xFFB8C6F2}));
+                new int[][]{{android.R.attr.state_checked}, {}}, new int[]{WHITE, 0xFF8F9BC9}));
         musicSwitch.setTrackTintList(new ColorStateList(
-                new int[][]{{android.R.attr.state_checked}, {}}, new int[]{0xFF17A596, 0xFF3B4878}));
+                new int[][]{{android.R.attr.state_checked}, {}}, new int[]{0xFF25D366, 0xFF27315F}));
         musicSwitch.setOnCheckedChangeListener((b, on) -> {
             selMusic = on;
             Dnd.prefs(this).edit().putBoolean(Dnd.KEY_SEL_MUSIC, on).apply();
+            refresh();
         });
+        musicState = text("OFF", 13, 0xFF8F9BC9, true);
+        musicState.setGravity(Gravity.END);
+        musicRow.addView(musicState, lin(dp(32), WRAP, 0f, 0, 0, 8, 0));
         musicRow.addView(musicSwitch, new LinearLayout.LayoutParams(WRAP, WRAP));
         col.addView(musicRow, lin(MATCH, dp(44), 0f, 0, 6, 0, 0));
 
@@ -263,27 +253,15 @@ public class MainActivity extends Activity {
         left.setOrientation(LinearLayout.VERTICAL);
         left.addView(text("Duration", 17, WHITE, true), new LinearLayout.LayoutParams(MATCH, dp(22)));
 
-        wheel = new NumberPicker(this);
-        wheel.setMinValue(0);
-        wheel.setMaxValue(LABELS.length - 1);
-        wheel.setDisplayedValues(LABELS);
-        wheel.setWrapSelectorWheel(false);
-        wheel.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
-        wheel.setValue(selIdx);
-        if (Build.VERSION.SDK_INT >= 29) {
-            wheel.setTextColor(WHITE);
-            wheel.setTextSize(dp(16));
-        }
-        wheel.setOnValueChangedListener((np, oldVal, newVal) -> {
-            selIdx = newVal;
-            Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_IDX_V2, newVal).apply();
+        wheel = new OdometerView(this, LABELS, selIdx);
+        wheel.setListener(index -> {
+            selIdx = index;
+            Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_IDX_V2, index).apply();
             refresh();
         });
         FrameLayout wheelBox = new FrameLayout(this);
-        wheelBox.setBackground(rect(0xC7101A3C, 0x47829AE6, 1, 16));
-        wheelBox.setClipToOutline(true);
         wheelBox.addView(wheel, new FrameLayout.LayoutParams(MATCH, MATCH));
-        left.addView(wheelBox, lin(MATCH, dp(96), 0f, 0, 4, 0, 0));
+        left.addView(wheelBox, lin(MATCH, dp(120), 0f, 0, 4, 0, 0));
         bottom.addView(left, lin(0, WRAP, 0.9f, 0, 0, 5, 0));
 
         LinearLayout right = new LinearLayout(this);
@@ -298,10 +276,20 @@ public class MainActivity extends Activity {
         divider.setBackgroundColor(PANEL_STROKE);
         box.addView(divider, new LinearLayout.LayoutParams(MATCH, dp(1)));
         box.addView(timeRow(R.drawable.ic_flag, false), new LinearLayout.LayoutParams(MATCH, 0, 1f));
-        right.addView(box, lin(MATCH, dp(96), 0f, 0, 4, 0, 0));
+        right.addView(box, lin(MATCH, dp(120), 0f, 0, 4, 0, 0));
         bottom.addView(right, lin(0, WRAP, 1.1f, 5, 0, 0, 0));
 
         col.addView(bottom, lin(MATCH, WRAP, 0f, 0, 6, 0, 0));
+
+        goBar = new LinearLayout(this);
+        goBar.setGravity(Gravity.CENTER);
+        goIcon = icon(R.drawable.ic_play, 18, WHITE);
+        goText = text("", 18, WHITE, true);
+        goText.setLetterSpacing(0.04f);
+        goBar.addView(goIcon, new LinearLayout.LayoutParams(dp(18), dp(18)));
+        goBar.addView(goText, lin(WRAP, WRAP, 0f, 9, 0, 0, 0));
+        goBar.setOnClickListener(v -> toggle());
+        col.addView(goBar, lin(MATCH, dp(50), 0f, 0, 8, 0, 0));
         return root;
     }
 
@@ -333,10 +321,10 @@ public class MainActivity extends Activity {
         return c;
     }
 
-    private LinearLayout modeCard(int iconRes, int circleColor, String title, String sub) {
+    private LinearLayout modeCard(int iconRes, int circleColor, String title) {
         LinearLayout card = new LinearLayout(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(10), dp(8), dp(10), dp(8));
+        card.setPadding(dp(10), dp(6), dp(8), dp(6));
         card.setClickable(true);
 
         FrameLayout circle = new FrameLayout(this);
@@ -344,23 +332,20 @@ public class MainActivity extends Activity {
         oval.setShape(GradientDrawable.OVAL);
         oval.setColor(circleColor);
         circle.setBackground(oval);
-        ImageView ic = icon(iconRes, 20, WHITE);
-        circle.addView(ic, new FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER));
-        card.addView(circle, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        circle.addView(icon(iconRes, 16, WHITE), new FrameLayout.LayoutParams(dp(16), dp(16), Gravity.CENTER));
+        card.addView(circle, new LinearLayout.LayoutParams(dp(28), dp(28)));
 
-        LinearLayout texts = new LinearLayout(this);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        texts.addView(text(title, 15, WHITE, true));
-        texts.addView(text(sub, 11, 0xFFD3DAFA, false), lin(WRAP, WRAP, 0f, 0, 1, 0, 0));
-        card.addView(texts, lin(0, WRAP, 1f, 8, 0, 0, 0));
+        TextView t = text(title, 15, WHITE, true);
+        t.setSingleLine(true);
+        card.addView(t, lin(0, WRAP, 1f, 8, 0, 0, 0));
         return card;
     }
 
     private void styleCards(int mode) {
         cardSilent.setBackground(rect(mode == Dnd.SILENT ? 0x807440C8 : 0x40582CA0,
-                mode == Dnd.SILENT ? 0xFFD9A0FF : 0x59C48CFF, 2, 18));
+                mode == Dnd.SILENT ? 0xFFD9A0FF : 0x59C48CFF, 2, 14));
         cardDnd.setBackground(rect(mode == Dnd.DND ? 0x802854D2 : 0x401E3CA0,
-                mode == Dnd.DND ? 0xFF6F9CFF : 0x596496FF, 2, 18));
+                mode == Dnd.DND ? 0xFF6F9CFF : 0x596496FF, 2, 14));
     }
 
     // ------------------------------------------------------------------ behaviour
@@ -406,10 +391,12 @@ public class MainActivity extends Activity {
         }
 
         wheel.setEnabled(!active);
-        if (wheel.getValue() != selIdx) {
-            wheel.setValue(selIdx);
-        }
+        wheel.setSelected(selIdx);
         musicSwitch.setEnabled(!active);
+        musicState.setText(selMusic ? "ON" : "OFF");
+        musicState.setTextColor(selMusic ? 0xFF5DFF9A : 0xFF8F9BC9);
+        musicRow.setBackground(selMusic ? rect(0x2925D366, 0xBF25D366, 1, 16)
+                : rect(0x80101A46, 0x4D829AE6, 1, 16));
         if (musicSwitch.isChecked() != selMusic) {
             musicSwitch.setChecked(selMusic);
         }
@@ -458,21 +445,20 @@ public class MainActivity extends Activity {
         ringLabel.setText(caption);
         ring.setFraction(frac);
 
-        // Start / End pill
+        // Start / End bar
         GradientDrawable g;
         if (active) {
-            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF2A4BC0, 0xFF1A2F8C});
-            g.setStroke(dp(1), 0x66FFFFFF);
-            pillIcon.setImageResource(R.drawable.ic_stop);
-            pillText.setText("END");
+            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFE32D40, 0xFFA30F22});
+            goIcon.setImageResource(R.drawable.ic_stop);
+            goText.setText("END SLEEP TIMER");
         } else {
-            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF14894A, 0xFF0B6E39});
-            g.setStroke(dp(1), 0x4DFFFFFF);
-            pillIcon.setImageResource(R.drawable.ic_play);
-            pillText.setText("START");
+            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF26BD65, 0xFF0E7D3D});
+            goIcon.setImageResource(R.drawable.ic_play);
+            goText.setText("START SLEEP TIMER");
         }
-        g.setCornerRadius(dp(17));
-        pill.setBackground(g);
+        g.setStroke(dp(1), 0x40FFFFFF);
+        g.setCornerRadius(dp(25));
+        goBar.setBackground(g);
 
         // Start and end times
         long shownEnd = active ? end : (minutes < 0 ? 0 : now + minutes * 60_000L);
