@@ -46,8 +46,8 @@ class OdometerView extends View {
         this.selected = selected;
         this.pos = selected;
         density = c.getResources().getDisplayMetrics().density;
-        rowPx = 24f * density;
-        radiusPx = 57f * density;
+        rowPx = 28f * density;
+        radiusPx = 66f * density;
         text.setTextAlign(Paint.Align.CENTER);
         text.setTypeface(Typeface.DEFAULT_BOLD);
         line.setStyle(Paint.Style.STROKE);
@@ -167,7 +167,7 @@ class OdometerView extends View {
 
         // lit window
         fill.setColor(0x2E786EFF);
-        rect.set(4 * density, cy - 14 * density, w - 4 * density, cy + 14 * density);
+        rect.set(4 * density, cy - 16 * density, w - 4 * density, cy + 16 * density);
         canvas.drawRoundRect(rect, 4 * density, 4 * density, fill);
         line.setColor(0x66FFFFFF);
         canvas.drawLine(rect.left, rect.top, rect.right, rect.top, line);
@@ -184,18 +184,18 @@ class OdometerView extends View {
             float cos = (float) Math.cos(rad);
             float y = cy + radiusPx * (float) Math.sin(rad);
             float ad = Math.min(Math.abs(d), 2f);
-            text.setTextSize((17f - ad * 1.5f) * density);
+            text.setTextSize((18f - ad * 1.5f) * density);
             text.setColor(Math.abs(d) < 0.5f ? 0xFFFFFFFF : 0xFFAAB6E0);
             text.setAlpha((int) (255 * Math.pow(Math.max(0f, cos), 1.3)));
             canvas.save();
             canvas.translate(cx, y);
             canvas.scale(1f, Math.max(0.05f, cos));
-            canvas.drawText(labels[i], 0, 6 * density, text);
+            canvas.drawText(labels[i], 0, 6.5f * density, text);
             canvas.restore();
         }
 
         // top and bottom shading, so it reads as a curved drum
-        float sh = 40 * density;
+        float sh = 46 * density;
         fill.setShader(new LinearGradient(0, 0, 0, sh, 0xF7050818, 0x00050818, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, w, sh, fill);
         fill.setShader(new LinearGradient(0, h - sh, 0, h, 0x00050818, 0xF7050818, Shader.TileMode.CLAMP));
