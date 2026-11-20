@@ -145,7 +145,7 @@ public class MainActivity extends Activity {
         scroll.setFillViewport(true);
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(dp(16), dp(8), dp(16), dp(24));
+        col.setPadding(dp(16), dp(8), dp(16), dp(12));
         scroll.addView(col, new FrameLayout.LayoutParams(MATCH, WRAP));
         root.addView(scroll, new FrameLayout.LayoutParams(MATCH, MATCH));
 
@@ -261,7 +261,7 @@ public class MainActivity extends Activity {
         });
         FrameLayout wheelBox = new FrameLayout(this);
         wheelBox.addView(wheel, new FrameLayout.LayoutParams(MATCH, MATCH));
-        left.addView(wheelBox, lin(MATCH, dp(140), 0f, 0, 4, 0, 0));
+        left.addView(wheelBox, lin(MATCH, dp(156), 0f, 0, 4, 0, 0));
         bottom.addView(left, lin(0, WRAP, 0.9f, 0, 0, 5, 0));
 
         LinearLayout right = new LinearLayout(this);
@@ -276,7 +276,7 @@ public class MainActivity extends Activity {
         divider.setBackgroundColor(PANEL_STROKE);
         box.addView(divider, new LinearLayout.LayoutParams(MATCH, dp(1)));
         box.addView(timeRow(R.drawable.ic_flag, false), new LinearLayout.LayoutParams(MATCH, 0, 1f));
-        right.addView(box, lin(MATCH, dp(140), 0f, 0, 4, 0, 0));
+        right.addView(box, lin(MATCH, dp(156), 0f, 0, 4, 0, 0));
         bottom.addView(right, lin(0, WRAP, 1.1f, 5, 0, 0, 0));
 
         col.addView(bottom, lin(MATCH, WRAP, 0f, 0, 10, 0, 0));
@@ -289,7 +289,7 @@ public class MainActivity extends Activity {
         goBar.addView(goIcon, new LinearLayout.LayoutParams(dp(18), dp(18)));
         goBar.addView(goText, lin(WRAP, WRAP, 0f, 9, 0, 0, 0));
         goBar.setOnClickListener(v -> toggle());
-        col.addView(goBar, lin(MATCH, dp(54), 0f, 0, 12, 0, 0));
+        col.addView(goBar, lin(MATCH, dp(54), 0f, 0, 20, 0, 0));
         return root;
     }
 
