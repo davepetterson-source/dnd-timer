@@ -1,14 +1,18 @@
 package com.catstorm.dndtimer;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,7 +25,9 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.NumberPicker;
 import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -41,9 +47,11 @@ public class MainActivity extends Activity {
     private static final int PANEL_STROKE = 0x47829AE6;
 
     private static final String[] LABELS = {
-            "15m", "30m", "45m", "1h", "1h15", "1h30", "2h", "3h", "4h", "5h", "6h", "∞"
+            "1 min", "15 min", "30 min", "45 min", "1 hour", "1 hour 15 min", "1 hour 30 min",
+            "2 hours", "3 hours", "4 hours", "5 hours", "6 hours", "Until I stop"
     };
-    private static final int[] MINUTES = {15, 30, 45, 60, 75, 90, 120, 180, 240, 300, 360, -1};
+    private static final int[] MINUTES = {1, 15, 30, 45, 60, 75, 90, 120, 180, 240, 300, 360, -1};
+    private static final int DEFAULT_IDX = 6;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable tick = new Runnable() {
@@ -57,6 +65,7 @@ public class MainActivity extends Activity {
     private NotificationManager nm;
     private int selMode;
     private int selIdx;
+    private boolean selMusic;
 
     private LinearLayout banner;
     private ImageView bannerIcon;
@@ -66,13 +75,11 @@ public class MainActivity extends Activity {
     private TextView ringLabel;
     private LinearLayout cardSilent;
     private LinearLayout cardDnd;
-    private LinearLayout cardMedia;
-    private StopsView stops;
-    private LinearLayout bar;
-    private TextView durText;
-    private LinearLayout chip;
-    private ImageView chipIcon;
-    private TextView chipText;
+    private Switch musicSwitch;
+    private NumberPicker wheel;
+    private LinearLayout pill;
+    private ImageView pillIcon;
+    private TextView pillText;
     private TextView startLabel;
     private TextView startVal;
     private TextView startDay;
@@ -88,8 +95,9 @@ public class MainActivity extends Activity {
 
         nm = getSystemService(NotificationManager.class);
         SharedPreferences p = Dnd.prefs(this);
-        selMode = p.getInt(Dnd.KEY_SEL_MODE, Dnd.SILENT);
-        selIdx = Math.max(0, Math.min(LABELS.length - 1, p.getInt(Dnd.KEY_SEL_IDX, 5)));
+        selMode = p.getInt(Dnd.KEY_SEL_MODE, Dnd.SILENT) == Dnd.DND ? Dnd.DND : Dnd.SILENT;
+        selIdx = Math.max(0, Math.min(LABELS.length - 1, p.getInt(Dnd.KEY_SEL_IDX_V2, DEFAULT_IDX)));
+        selMusic = p.getBoolean(Dnd.KEY_SEL_MUSIC, false);
 
         setContentView(buildUi());
         refresh();
@@ -113,49 +121,43 @@ public class MainActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(0xFF090F2C);
 
-        // Moonlit lake picture, fading to the background colour
+        // Moonlit lake picture, scaled to the screen width, fading to the background colour
+        float k = getResources().getDisplayMetrics().widthPixels
+                / (390f * getResources().getDisplayMetrics().density);
         FrameLayout bgWrap = new FrameLayout(this);
+        bgWrap.setClipChildren(true);
         ImageView bg = new ImageView(this);
         bg.setImageResource(R.drawable.bg_moon);
-        bg.setAdjustViewBounds(true);
         bg.setScaleType(ImageView.ScaleType.FIT_XY);
-        bgWrap.addView(bg, new FrameLayout.LayoutParams(MATCH, WRAP));
+        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(dp(567 * k), dp(850 * k));
+        bp.leftMargin = -dp(127 * k);
+        bp.topMargin = -dp(348 * k);
+        bgWrap.addView(bg, bp);
         View overlay = new View(this);
         overlay.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x26090F2C, 0x4D090F2C, 0x73090F2C, 0xCC090F2C, 0xFF090F2C}));
+                new int[]{0x1A090F2C, 0x66090F2C, 0xD9090F2C, 0xFF090F2C}));
         bgWrap.addView(overlay, new FrameLayout.LayoutParams(MATCH, MATCH));
-        root.addView(bgWrap, new FrameLayout.LayoutParams(MATCH, WRAP, Gravity.TOP));
+        root.addView(bgWrap, new FrameLayout.LayoutParams(MATCH, dp(520 * k), Gravity.TOP));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setFillViewport(true);
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(dp(16), dp(14), dp(16), dp(24));
+        col.setPadding(dp(16), dp(8), dp(16), dp(24));
         scroll.addView(col, new FrameLayout.LayoutParams(MATCH, WRAP));
         root.addView(scroll, new FrameLayout.LayoutParams(MATCH, MATCH));
-
-        // Header
-        LinearLayout header = new LinearLayout(this);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.addView(icon(R.drawable.ic_moon, 48, 0xFF8DB4FF), new LinearLayout.LayoutParams(dp(48), dp(48)));
-        LinearLayout titles = new LinearLayout(this);
-        titles.setOrientation(LinearLayout.VERTICAL);
-        titles.addView(text("Sleeping Timer", 28, WHITE, true));
-        titles.addView(text("Quieter nights. A brighter you.", 15, MUTED, false));
-        header.addView(titles, lin(0, WRAP, 1f, 10, 0, 0, 0));
-        col.addView(header, lin(MATCH, WRAP, 0f, 0, 0, 0, 0));
 
         // Status banner
         banner = new LinearLayout(this);
         banner.setGravity(Gravity.CENTER_VERTICAL);
-        banner.setPadding(dp(12), dp(8), dp(12), dp(8));
-        bannerIcon = icon(R.drawable.ic_moon, 40, 0xFF9EC3FF);
+        banner.setPadding(dp(12), dp(6), dp(12), dp(6));
+        bannerIcon = icon(R.drawable.ic_moon, 34, 0xFF9EC3FF);
         bannerTitle = text("", 17, WHITE, true);
         bannerTitle.setSingleLine(true);
-        banner.addView(bannerIcon, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        banner.addView(bannerIcon, new LinearLayout.LayoutParams(dp(34), dp(34)));
         banner.addView(bannerTitle, lin(WRAP, WRAP, 0f, 10, 0, 0, 0));
-        col.addView(banner, lin(dp(268), dp(56), 0f, 0, 12, 0, 0));
+        col.addView(banner, lin(dp(268), dp(48), 0f, 0, 0, 0, 0));
 
         // Ring card
         FrameLayout ringCard = new FrameLayout(this);
@@ -167,122 +169,157 @@ public class MainActivity extends Activity {
         zz.setImageResource(R.drawable.ic_moon_zz);
         FrameLayout.LayoutParams zl = new FrameLayout.LayoutParams(dp(54), dp(54),
                 Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        zl.topMargin = dp(24);
+        zl.topMargin = dp(20);
         ringBox.addView(zz, zl);
+
         LinearLayout centre = new LinearLayout(this);
         centre.setOrientation(LinearLayout.VERTICAL);
-        centre.setGravity(Gravity.CENTER);
-        centre.setPadding(0, dp(14), 0, 0);
-        clockView = text("", 22, WHITE, true);
+        centre.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        centre.setPadding(0, dp(74), 0, 0);
+        clockView = text("", 21, WHITE, true);
         clockView.setGravity(Gravity.CENTER);
-        ringLabel = text("Selected duration", 14, MUTED, false);
-        centre.addView(clockView, new LinearLayout.LayoutParams(WRAP, WRAP));
-        centre.addView(ringLabel, lin(WRAP, WRAP, 0f, 0, 2, 0, 0));
-        ringBox.addView(centre, new FrameLayout.LayoutParams(MATCH, MATCH));
-        ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(200), dp(200), Gravity.CENTER));
+        ringLabel = text("", 13, MUTED, false);
+        ringLabel.setGravity(Gravity.CENTER);
 
-        TextView hand = text("Better Sleep Brighter Days", 21, 0xFFAAB6DF, false);
+        pill = new LinearLayout(this);
+        pill.setGravity(Gravity.CENTER);
+        pill.setPadding(dp(16), 0, dp(16), 0);
+        pillIcon = icon(R.drawable.ic_play, 14, WHITE);
+        pillText = text("", 15, WHITE, true);
+        pillText.setLetterSpacing(0.05f);
+        pill.addView(pillIcon, new LinearLayout.LayoutParams(dp(14), dp(14)));
+        pill.addView(pillText, lin(WRAP, WRAP, 0f, 7, 0, 0, 0));
+        pill.setOnClickListener(v -> toggle());
+
+        centre.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(48)));
+        centre.addView(ringLabel, new LinearLayout.LayoutParams(MATCH, dp(16)));
+        centre.addView(pill, lin(WRAP, dp(34), 0f, 0, 4, 0, 0));
+        ringBox.addView(centre, new FrameLayout.LayoutParams(MATCH, MATCH));
+        ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(210), dp(210), Gravity.CENTER));
+
+        TextView hand = text("Better Sleep Brighter Days", 20, 0xFFAAB6DF, false);
         hand.setTypeface(Typeface.create("cursive", Typeface.NORMAL));
         hand.setGravity(Gravity.CENTER);
         hand.setRotation(-8f);
-        FrameLayout.LayoutParams hl = new FrameLayout.LayoutParams(dp(74), WRAP, Gravity.END | Gravity.TOP);
-        hl.topMargin = dp(78);
-        hl.rightMargin = dp(14);
+        FrameLayout.LayoutParams hl = new FrameLayout.LayoutParams(dp(66), WRAP, Gravity.END | Gravity.TOP);
+        hl.topMargin = dp(84);
+        hl.rightMargin = dp(8);
         ringCard.addView(hand, hl);
-        col.addView(ringCard, lin(MATCH, dp(232), 0f, 0, 14, 0, 0));
+        col.addView(ringCard, lin(MATCH, dp(222), 0f, 0, 8, 0, 0));
 
         // Choose mode
         LinearLayout modeHead = new LinearLayout(this);
         modeHead.setGravity(Gravity.CENTER_VERTICAL);
-        modeHead.addView(text("Choose mode", 18, WHITE, true), new LinearLayout.LayoutParams(0, WRAP, 1f));
+        modeHead.addView(text("Choose mode", 17, WHITE, true), new LinearLayout.LayoutParams(0, WRAP, 1f));
         LinearLayout whatsThis = new LinearLayout(this);
         whatsThis.setGravity(Gravity.CENTER_VERTICAL);
         whatsThis.addView(text("What’s the difference?", 13, 0xFF7FB0FF, false));
-        whatsThis.addView(icon(R.drawable.ic_info, 18, 0xFF7FB0FF), lin(dp(18), dp(18), 0f, 6, 0, 0, 0));
+        whatsThis.addView(icon(R.drawable.ic_info, 17, 0xFF7FB0FF), lin(dp(17), dp(17), 0f, 6, 0, 0, 0));
         whatsThis.setOnClickListener(v -> showInfo());
-        modeHead.addView(whatsThis, new LinearLayout.LayoutParams(WRAP, dp(30)));
-        col.addView(modeHead, lin(MATCH, dp(30), 0f, 0, 16, 0, 0));
+        modeHead.addView(whatsThis, new LinearLayout.LayoutParams(WRAP, dp(26)));
+        col.addView(modeHead, lin(MATCH, dp(26), 0f, 0, 8, 0, 0));
 
         cardSilent = modeCard(R.drawable.ic_speaker_off, 0xFF7A3FD0, "Silent",
                 "No calls, no notifications, no sounds. Full silence.");
         cardDnd = modeCard(R.drawable.ic_bell, 0xFF2F6BFF, "Do Not Disturb",
                 "Calls from selected contacts can ring through.");
-        cardMedia = modeCard(R.drawable.ic_music, 0xFF17A596, "Meditation",
-                "Music and media keep playing. Calls, alarms and notifications are blocked.");
         cardSilent.setOnClickListener(v -> chooseMode(Dnd.SILENT));
         cardDnd.setOnClickListener(v -> chooseMode(Dnd.DND));
-        cardMedia.setOnClickListener(v -> chooseMode(Dnd.MEDIA));
 
         LinearLayout row = new LinearLayout(this);
         row.setBaselineAligned(false);
         row.addView(cardSilent, lin(0, MATCH, 1f, 0, 0, 5, 0));
         row.addView(cardDnd, lin(0, MATCH, 1f, 5, 0, 0, 0));
-        col.addView(row, lin(MATCH, WRAP, 0f, 0, 8, 0, 0));
-        col.addView(cardMedia, lin(MATCH, WRAP, 0f, 0, 10, 0, 0));
+        col.addView(row, lin(MATCH, WRAP, 0f, 0, 6, 0, 0));
 
-        // Duration
-        LinearLayout durHead = new LinearLayout(this);
-        durHead.setGravity(Gravity.CENTER_VERTICAL);
-        durHead.addView(text("Duration", 18, WHITE, true), new LinearLayout.LayoutParams(0, WRAP, 1f));
-        durHead.addView(icon(R.drawable.ic_moon, 16, 0xFF7FB0FF), new LinearLayout.LayoutParams(dp(16), dp(16)));
-        durHead.addView(text("Slide to choose how long", 12.5f, 0xFFDBE3FF, false), lin(WRAP, WRAP, 0f, 6, 0, 0, 0));
-        col.addView(durHead, lin(MATCH, dp(30), 0f, 0, 16, 0, 0));
+        // Keep music playing
+        LinearLayout musicRow = new LinearLayout(this);
+        musicRow.setGravity(Gravity.CENTER_VERTICAL);
+        musicRow.setPadding(dp(12), 0, dp(12), 0);
+        musicRow.setBackground(rect(0x38146E6E, 0x7346D2BE, 1, 16));
+        musicRow.addView(iconCircle(R.drawable.ic_music, 0xFF17A596, 30, 17), new LinearLayout.LayoutParams(dp(30), dp(30)));
+        LinearLayout mt = new LinearLayout(this);
+        mt.setOrientation(LinearLayout.VERTICAL);
+        mt.addView(text("Keep music playing", 15, WHITE, true));
+        mt.addView(text("Works in both modes", 11, 0xFFC4CDF0, false));
+        musicRow.addView(mt, lin(0, WRAP, 1f, 10, 0, 0, 0));
+        musicSwitch = new Switch(this);
+        musicSwitch.setThumbTintList(new ColorStateList(
+                new int[][]{{android.R.attr.state_checked}, {}}, new int[]{WHITE, 0xFFB8C6F2}));
+        musicSwitch.setTrackTintList(new ColorStateList(
+                new int[][]{{android.R.attr.state_checked}, {}}, new int[]{0xFF17A596, 0xFF3B4878}));
+        musicSwitch.setOnCheckedChangeListener((b, on) -> {
+            selMusic = on;
+            Dnd.prefs(this).edit().putBoolean(Dnd.KEY_SEL_MUSIC, on).apply();
+        });
+        musicRow.addView(musicSwitch, new LinearLayout.LayoutParams(WRAP, WRAP));
+        col.addView(musicRow, lin(MATCH, dp(44), 0f, 0, 6, 0, 0));
 
-        stops = new StopsView(this, LABELS, selIdx);
-        stops.setListener(index -> {
-            selIdx = index;
-            Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_IDX, index).apply();
+        // Duration wheel (left) + start / end times (right)
+        LinearLayout bottom = new LinearLayout(this);
+        bottom.setBaselineAligned(false);
+
+        LinearLayout left = new LinearLayout(this);
+        left.setOrientation(LinearLayout.VERTICAL);
+        left.addView(text("Duration", 17, WHITE, true), new LinearLayout.LayoutParams(MATCH, dp(22)));
+
+        wheel = new NumberPicker(this);
+        wheel.setMinValue(0);
+        wheel.setMaxValue(LABELS.length - 1);
+        wheel.setDisplayedValues(LABELS);
+        wheel.setWrapSelectorWheel(false);
+        wheel.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        wheel.setValue(selIdx);
+        if (Build.VERSION.SDK_INT >= 29) {
+            wheel.setTextColor(WHITE);
+            wheel.setTextSize(dp(16));
+        }
+        wheel.setOnValueChangedListener((np, oldVal, newVal) -> {
+            selIdx = newVal;
+            Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_IDX_V2, newVal).apply();
             refresh();
         });
-        col.addView(stops, lin(MATCH, dp(56), 0f, 0, 6, 0, 0));
+        FrameLayout wheelBox = new FrameLayout(this);
+        wheelBox.setBackground(rect(0xC7101A3C, 0x47829AE6, 1, 16));
+        wheelBox.setClipToOutline(true);
+        wheelBox.addView(wheel, new FrameLayout.LayoutParams(MATCH, MATCH));
+        left.addView(wheelBox, lin(MATCH, dp(96), 0f, 0, 4, 0, 0));
+        bottom.addView(left, lin(0, WRAP, 0.9f, 0, 0, 5, 0));
 
-        // Start / end bar
-        bar = new LinearLayout(this);
-        bar.setGravity(Gravity.CENTER);
-        bar.setPadding(dp(8), 0, dp(8), 0);
-        durText = text("", 20, WHITE, true);
-        durText.setGravity(Gravity.CENTER);
-        durText.setPadding(dp(14), 0, 0, 0);
-        chip = new LinearLayout(this);
-        chip.setGravity(Gravity.CENTER_VERTICAL);
-        chip.setPadding(dp(14), 0, dp(18), 0);
-        chip.setBackground(rect(0x4D000000, 0, 0, 21));
-        chipIcon = icon(R.drawable.ic_play, 16, WHITE);
-        chipText = text("", 15, WHITE, true);
-        chipText.setLetterSpacing(0.05f);
-        chip.addView(chipIcon, new LinearLayout.LayoutParams(dp(16), dp(16)));
-        chip.addView(chipText, lin(WRAP, WRAP, 0f, 8, 0, 0, 0));
-        bar.addView(durText, new LinearLayout.LayoutParams(0, WRAP, 1f));
-        bar.addView(chip, new LinearLayout.LayoutParams(WRAP, dp(42)));
-        bar.setOnClickListener(v -> toggle());
-        col.addView(bar, lin(MATCH, dp(58), 0f, 0, 10, 0, 0));
-
-        // Start and end time
-        col.addView(text("Start and end time", 18, WHITE, true), lin(WRAP, dp(30), 0f, 0, 16, 0, 0));
+        LinearLayout right = new LinearLayout(this);
+        right.setOrientation(LinearLayout.VERTICAL);
+        right.addView(text("Start and end", 17, WHITE, true), new LinearLayout.LayoutParams(MATCH, dp(22)));
         LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(12), 0, dp(12), 0);
         box.setBackground(rect(PANEL_FILL, PANEL_STROKE, 1, 16));
-        box.addView(timeColumn(R.drawable.ic_clock, true), new LinearLayout.LayoutParams(0, MATCH, 1f));
+        box.addView(timeRow(R.drawable.ic_clock, true), new LinearLayout.LayoutParams(MATCH, 0, 1f));
         View divider = new View(this);
         divider.setBackgroundColor(PANEL_STROKE);
-        box.addView(divider, new LinearLayout.LayoutParams(dp(1), MATCH));
-        box.addView(timeColumn(R.drawable.ic_flag, false), new LinearLayout.LayoutParams(0, MATCH, 1f));
-        col.addView(box, lin(MATCH, dp(84), 0f, 0, 6, 0, 0));
+        box.addView(divider, new LinearLayout.LayoutParams(MATCH, dp(1)));
+        box.addView(timeRow(R.drawable.ic_flag, false), new LinearLayout.LayoutParams(MATCH, 0, 1f));
+        right.addView(box, lin(MATCH, dp(96), 0f, 0, 4, 0, 0));
+        bottom.addView(right, lin(0, WRAP, 1.1f, 5, 0, 0, 0));
 
+        col.addView(bottom, lin(MATCH, WRAP, 0f, 0, 6, 0, 0));
         return root;
     }
 
-    private LinearLayout timeColumn(int iconRes, boolean isStart) {
+    private LinearLayout timeRow(int iconRes, boolean isStart) {
         LinearLayout c = new LinearLayout(this);
-        c.setPadding(dp(14), dp(12), dp(14), dp(12));
-        c.addView(icon(iconRes, 26, 0xFFCFD8FF), new LinearLayout.LayoutParams(dp(26), dp(26)));
+        c.setGravity(Gravity.CENTER_VERTICAL);
+        c.addView(icon(iconRes, 22, 0xFFCFD8FF), new LinearLayout.LayoutParams(dp(22), dp(22)));
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
-        TextView label = text("", 13, MUTED, false);
-        TextView val = text("", 27, WHITE, true);
-        TextView day = text("", 13, MUTED, false);
+        TextView label = text("", 12, MUTED, false);
+        LinearLayout valRow = new LinearLayout(this);
+        valRow.setGravity(Gravity.BOTTOM);
+        TextView val = text("", 19, WHITE, true);
+        TextView day = text("", 12, MUTED, false);
+        valRow.addView(val);
+        valRow.addView(day, lin(WRAP, WRAP, 0f, 4, 0, 0, 2));
         t.addView(label);
-        t.addView(val);
-        t.addView(day);
+        t.addView(valRow);
         c.addView(t, lin(WRAP, WRAP, 0f, 10, 0, 0, 0));
         if (isStart) {
             startLabel = label;
@@ -299,7 +336,7 @@ public class MainActivity extends Activity {
     private LinearLayout modeCard(int iconRes, int circleColor, String title, String sub) {
         LinearLayout card = new LinearLayout(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(12), dp(12), dp(12), dp(12));
+        card.setPadding(dp(10), dp(8), dp(10), dp(8));
         card.setClickable(true);
 
         FrameLayout circle = new FrameLayout(this);
@@ -307,15 +344,15 @@ public class MainActivity extends Activity {
         oval.setShape(GradientDrawable.OVAL);
         oval.setColor(circleColor);
         circle.setBackground(oval);
-        ImageView ic = icon(iconRes, 22, WHITE);
-        circle.addView(ic, new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER));
-        card.addView(circle, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        ImageView ic = icon(iconRes, 20, WHITE);
+        circle.addView(ic, new FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER));
+        card.addView(circle, new LinearLayout.LayoutParams(dp(38), dp(38)));
 
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
-        texts.addView(text(title, 17, WHITE, true));
-        texts.addView(text(sub, 11.5f, 0xFFD3DAFA, false), lin(WRAP, WRAP, 0f, 0, 2, 0, 0));
-        card.addView(texts, lin(0, WRAP, 1f, 10, 0, 0, 0));
+        texts.addView(text(title, 15, WHITE, true));
+        texts.addView(text(sub, 11, 0xFFD3DAFA, false), lin(WRAP, WRAP, 0f, 0, 1, 0, 0));
+        card.addView(texts, lin(0, WRAP, 1f, 8, 0, 0, 0));
         return card;
     }
 
@@ -324,8 +361,6 @@ public class MainActivity extends Activity {
                 mode == Dnd.SILENT ? 0xFFD9A0FF : 0x59C48CFF, 2, 18));
         cardDnd.setBackground(rect(mode == Dnd.DND ? 0x802854D2 : 0x401E3CA0,
                 mode == Dnd.DND ? 0xFF6F9CFF : 0x596496FF, 2, 18));
-        cardMedia.setBackground(rect(mode == Dnd.MEDIA ? 0x80198C87 : 0x40146E6E,
-                mode == Dnd.MEDIA ? 0xFF4FE0C8 : 0x5946D2BE, 2, 18));
     }
 
     // ------------------------------------------------------------------ behaviour
@@ -342,11 +377,18 @@ public class MainActivity extends Activity {
     private void toggle() {
         if (Dnd.prefs(this).getBoolean(Dnd.KEY_ACTIVE, false)) {
             Dnd.stop(this);
-        } else if (!Dnd.start(this, selMode, MINUTES[selIdx])) {
-            Toast.makeText(this,
-                    "Switch on “Sleeping Timer” under Do Not Disturb access, then come back and press Start",
-                    Toast.LENGTH_LONG).show();
-            startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+        } else {
+            if (Build.VERSION.SDK_INT >= 33
+                    && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+            }
+            if (!Dnd.start(this, selMode, MINUTES[selIdx], selMusic)) {
+                Toast.makeText(this,
+                        "Switch on “Sleeping Timer” under Do Not Disturb access, then come back and press Start",
+                        Toast.LENGTH_LONG).show();
+                startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+            }
         }
         refresh();
     }
@@ -363,18 +405,24 @@ public class MainActivity extends Activity {
             selMode = p.getInt(Dnd.KEY_MODE, selMode);
         }
 
-        stops.setSelected(selIdx);
-        stops.setLocked(active);
+        wheel.setEnabled(!active);
+        if (wheel.getValue() != selIdx) {
+            wheel.setValue(selIdx);
+        }
+        musicSwitch.setEnabled(!active);
+        if (musicSwitch.isChecked() != selMusic) {
+            musicSwitch.setChecked(selMusic);
+        }
         styleCards(selMode);
 
         // Banner
         if (active) {
-            banner.setBackground(rect(0x66203CA0, 0xBF6E96FF, 2, 18));
+            banner.setBackground(rect(0x66203CA0, 0xBF6E96FF, 2, 16));
             bannerIcon.setColorFilter(0xFF9EC3FF);
             bannerTitle.setTextColor(WHITE);
             bannerTitle.setText("Sleep Timer Active");
         } else {
-            banner.setBackground(rect(0x59126440, 0xBF3DDC84, 2, 18));
+            banner.setBackground(rect(0x59126440, 0xBF3DDC84, 2, 16));
             bannerIcon.setColorFilter(0xFF6DF0A4);
             bannerTitle.setTextColor(0xFF8AF3B4);
             bannerTitle.setText("Sleep Timer Inactive");
@@ -384,50 +432,47 @@ public class MainActivity extends Activity {
         String clock;
         float clockSp = 30f;
         float frac = 0f;
-        String label;
+        String caption = "";
         if (active) {
             if (end == 0) {
                 clock = "∞";
                 frac = 1f;
-                label = "No automatic end";
+                caption = "no automatic end";
             } else {
                 long left = Math.max(0, end - now);
                 clock = clockStr(left);
                 frac = (float) left / (float) Math.max(1, end - start);
-                label = "Time remaining";
+                caption = "of " + shortDur((int) Math.round((end - start) / 60000.0));
             }
         } else {
-            label = "Selected duration";
             if (minutes < 0) {
                 clock = "∞";
             } else {
                 clock = durWords(minutes);
-                clockSp = 22f;
+                clockSp = 21f;
             }
         }
         clockView.setText(clock);
         clockView.setTextSize(clockSp);
-        ringLabel.setText(label);
+        clockView.setGravity(Gravity.CENTER);
+        ringLabel.setText(caption);
         ring.setFraction(frac);
 
-        // Start / end bar
+        // Start / End pill
         GradientDrawable g;
         if (active) {
-            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF1D3380, 0xFF101C54});
-            g.setStroke(dp(1), 0x99829AFF);
-            durText.setVisibility(View.VISIBLE);
-            durText.setText(minutes < 0 ? "Until I turn it off" : durTextOf(minutes));
-            chipIcon.setImageResource(R.drawable.ic_stop);
-            chipText.setText("END");
+            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF2A4BC0, 0xFF1A2F8C});
+            g.setStroke(dp(1), 0x66FFFFFF);
+            pillIcon.setImageResource(R.drawable.ic_stop);
+            pillText.setText("END");
         } else {
-            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF1FA75C, 0xFF0B7A3C});
-            g.setStroke(dp(1), 0x40FFFFFF);
-            durText.setVisibility(View.GONE);
-            chipIcon.setImageResource(R.drawable.ic_play);
-            chipText.setText("START SLEEP TIMER");
+            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF14894A, 0xFF0B6E39});
+            g.setStroke(dp(1), 0x4DFFFFFF);
+            pillIcon.setImageResource(R.drawable.ic_play);
+            pillText.setText("START");
         }
-        g.setCornerRadius(dp(29));
-        bar.setBackground(g);
+        g.setCornerRadius(dp(17));
+        pill.setBackground(g);
 
         // Start and end times
         long shownEnd = active ? end : (minutes < 0 ? 0 : now + minutes * 60_000L);
@@ -438,7 +483,7 @@ public class MainActivity extends Activity {
         startDay.setVisibility(sd.isEmpty() ? View.GONE : View.VISIBLE);
         endLabel.setText(active ? "Ends at" : "Will end at");
         endVal.setText(shownEnd == 0 ? "--:--" : hhmm(shownEnd));
-        endDay.setText(shownEnd == 0 ? "No end time" : dayStr(shownEnd, now));
+        endDay.setText(shownEnd == 0 ? "no end time" : dayStr(shownEnd, now));
     }
 
     // ------------------------------------------------------------------ pop-up
@@ -480,7 +525,7 @@ public class MainActivity extends Activity {
                 0x8CF06478, 0x38962838,
                 new String[]{"No calls", "No notifications", "No sounds or vibrations", "Alarms are muted too",
                         "Your phone stays completely silent"},
-                "Best for sleep, meditation or when you need total quiet.", 0x59962838),
+                "Best for sleep or when you need total quiet.", 0x59962838),
                 lin(0, MATCH, 1f, 0, 0, 5, 0));
         cols.addView(featureCard(R.drawable.ic_bell, 0xFF3F55FF, "Do Not Disturb",
                 "Reduces interruptions but allows important calls.", 0x8C648CFF, 0x401E3CA0,
@@ -490,7 +535,7 @@ public class MainActivity extends Activity {
                 lin(0, MATCH, 1f, 5, 0, 0, 0));
         sheet.addView(cols, lin(MATCH, WRAP, 0f, 0, 16, 0, 0));
 
-        // Meditation
+        // Keep music playing
         LinearLayout med = new LinearLayout(this);
         med.setGravity(Gravity.CENTER_VERTICAL);
         med.setPadding(dp(12), dp(12), dp(12), dp(12));
@@ -498,9 +543,10 @@ public class MainActivity extends Activity {
         med.addView(iconCircle(R.drawable.ic_music, 0xFF17A596, 38, 20), new LinearLayout.LayoutParams(dp(38), dp(38)));
         LinearLayout medText = new LinearLayout(this);
         medText.setOrientation(LinearLayout.VERTICAL);
-        medText.addView(text("Meditation", 15, WHITE, true));
-        medText.addView(text("Music and media keep playing. Calls, alarms and notifications are blocked. "
-                + "Best for guided meditation or sleep music.", 11.5f, 0xFFDBE3FF, false));
+        medText.addView(text("Keep music playing", 15, WHITE, true));
+        medText.addView(text("Switch this on and music or video keeps playing in either mode. "
+                + "Calls, alarms and notifications stay blocked, so you can drift off to meditation music.",
+                11.5f, 0xFFDBE3FF, false));
         med.addView(medText, lin(0, WRAP, 1f, 10, 0, 0, 0));
         sheet.addView(med, lin(MATCH, WRAP, 0f, 0, 10, 0, 0));
 
@@ -638,13 +684,18 @@ public class MainActivity extends Activity {
             if (sb.length() > 0) {
                 sb.append('\n');
             }
-            sb.append(r).append(" Minutes");
+            sb.append(r).append(r == 1 ? " Minute" : " Minutes");
         }
         return sb.toString();
     }
 
-    private static String durTextOf(int m) {
-        return durWords(m).replace('\n', ' ');
+    private static String shortDur(int m) {
+        int h = m / 60;
+        int r = m % 60;
+        if (h > 0 && r > 0) {
+            return h + " hr " + r + " min";
+        }
+        return h > 0 ? h + " hr" : r + " min";
     }
 
     private static String hhmm(long t) {

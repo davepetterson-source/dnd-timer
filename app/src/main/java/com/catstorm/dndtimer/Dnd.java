@@ -1,6 +1,8 @@
 package com.catstorm.dndtimer;
 
 import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -8,18 +10,22 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 /**
  * All the Do Not Disturb logic. Three modes:
- *  SILENT - total silence (calls, notifications, sounds, alarms and media all blocked)
+ *  SILENT - total silence (calls, notifications, sounds, alarms all blocked)
  *  DND    - normal Do Not Disturb using your own "priority" settings (selected contacts, alarms...)
- *  MEDIA  - Meditation: only media (music/video) is allowed; calls, alarms and notifications blocked
+ * "Keep music playing" can be added to either: music/video/games are let through, nothing else
+ * changes. (Silent + music = only media allowed; DND + music = your settings plus media.)
  * Whatever DND was set to before is saved at the start and put back when the timer ends.
  */
 final class Dnd {
 
     static final int SILENT = 0;
     static final int DND = 1;
-    static final int MEDIA = 2;
 
     static final String ACTION_END = "com.catstorm.dndtimer.END";
 
@@ -29,6 +35,12 @@ final class Dnd {
     static final String KEY_MODE = "mode";
     static final String KEY_SEL_MODE = "selMode";
     static final String KEY_SEL_IDX = "selIdx";
+    static final String KEY_SEL_IDX_V2 = "selIdx2";
+    static final String KEY_SEL_MUSIC = "selMusic";
+    private static final String KEY_POLICY_CHANGED = "ppc";
+    private static final String KEY_MUSIC = "music";
+    private static final String CHANNEL = "running";
+    private static final int NOTE_ID = 1;
 
     private static final String KEY_PREV_FILTER = "pf";
     private static final String KEY_PREV_CATS = "pc";
@@ -44,7 +56,7 @@ final class Dnd {
     }
 
     /** Starts a session. minutes < 0 means "until I turn it off". False if DND access is not granted. */
-    static boolean start(Context c, int mode, int minutes) {
+    static boolean start(Context c, int mode, int minutes, boolean music) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (!nm.isNotificationPolicyAccessGranted()) {
             return false;
@@ -68,28 +80,38 @@ final class Dnd {
             e.putInt(KEY_PREV_CONV, Build.VERSION.SDK_INT >= 30 ? pol.priorityConversationSenders : 0);
         }
 
-        if (mode == SILENT) {
-            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE);
-        } else if (mode == MEDIA) {
-            nm.setNotificationPolicy(policy(
-                    NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA,
-                    NotificationManager.Policy.PRIORITY_SENDERS_ANY,
-                    NotificationManager.Policy.PRIORITY_SENDERS_ANY,
-                    pol.suppressedVisualEffects,
-                    2 /* CONVERSATION_SENDERS_NONE */));
+        boolean changePolicy = music;
+        if (changePolicy) {
+            int cats = NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
+            int calls = NotificationManager.Policy.PRIORITY_SENDERS_ANY;
+            int msgs = NotificationManager.Policy.PRIORITY_SENDERS_ANY;
+            int conv = 2; /* CONVERSATION_SENDERS_NONE */
+            if (mode == DND) {
+                cats = pol.priorityCategories | NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
+                calls = pol.priorityCallSenders;
+                msgs = pol.priorityMessageSenders;
+                conv = Build.VERSION.SDK_INT >= 30 ? pol.priorityConversationSenders : 0;
+            }
+            nm.setNotificationPolicy(policy(cats, calls, msgs, pol.suppressedVisualEffects, conv));
             nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY);
+        } else if (mode == SILENT) {
+            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE);
         } else {
             nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY);
+        }
+        if (!p.getBoolean(KEY_ACTIVE, false) || changePolicy) {
+            e.putBoolean(KEY_POLICY_CHANGED, changePolicy || p.getBoolean(KEY_POLICY_CHANGED, false));
         }
 
         long now = System.currentTimeMillis();
         long end = minutes < 0 ? 0 : now + minutes * 60_000L;
-        e.putBoolean(KEY_ACTIVE, true).putLong(KEY_START, now).putLong(KEY_END, end).putInt(KEY_MODE, mode);
+        e.putBoolean(KEY_ACTIVE, true).putBoolean(KEY_MUSIC, music).putLong(KEY_START, now).putLong(KEY_END, end).putInt(KEY_MODE, mode);
         e.apply();
 
         if (end != 0) {
             schedule(c, end);
         }
+        showNotification(c, end, mode, music);
         return true;
     }
 
@@ -98,7 +120,7 @@ final class Dnd {
         SharedPreferences p = prefs(c);
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (p.getBoolean(KEY_ACTIVE, false) && nm.isNotificationPolicyAccessGranted()) {
-            if (p.getInt(KEY_MODE, DND) == MEDIA) {
+            if (p.getBoolean(KEY_POLICY_CHANGED, false)) {
                 nm.setNotificationPolicy(policy(
                         p.getInt(KEY_PREV_CATS, 0),
                         p.getInt(KEY_PREV_CALLS, 0),
@@ -110,7 +132,8 @@ final class Dnd {
                     p.getInt(KEY_PREV_FILTER, NotificationManager.INTERRUPTION_FILTER_ALL));
         }
         c.getSystemService(AlarmManager.class).cancel(pending(c));
-        p.edit().remove(KEY_ACTIVE).remove(KEY_START).remove(KEY_END).remove(KEY_MODE).apply();
+        nm.cancel(NOTE_ID);
+        p.edit().remove(KEY_ACTIVE).remove(KEY_START).remove(KEY_END).remove(KEY_MODE).remove(KEY_MUSIC).remove(KEY_POLICY_CHANGED).apply();
     }
 
     /** If a timer ran out while nothing was listening, finish it now. */
@@ -129,6 +152,7 @@ final class Dnd {
             return;
         }
         long end = p.getLong(KEY_END, 0);
+        showNotification(c, end, p.getInt(KEY_MODE, DND), p.getBoolean(KEY_MUSIC, false));
         if (end == 0) {
             return;
         }
@@ -160,5 +184,35 @@ final class Dnd {
         Intent i = new Intent(c, DndReceiver.class).setAction(ACTION_END);
         return PendingIntent.getBroadcast(c, 0, i,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** The "Sleep Timer active" entry in the pull-down bar: tap to open the app, or press End. */
+    private static void showNotification(Context c, long end, int mode, boolean music) {
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        NotificationChannel ch = new NotificationChannel(CHANNEL, "Sleep Timer running",
+                NotificationManager.IMPORTANCE_LOW);
+        ch.setShowBadge(false);
+        nm.createNotificationChannel(ch);
+
+        String what = (mode == SILENT ? "Silent" : "Do Not Disturb") + (music ? " + music" : "");
+        String when = end == 0 ? "until you end it"
+                : "ends at " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(end));
+
+        PendingIntent open = PendingIntent.getActivity(c, 2, new Intent(c, MainActivity.class)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent endNow = PendingIntent.getBroadcast(c, 1,
+                new Intent(c, DndReceiver.class).setAction(ACTION_END),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        Notification.Builder b = new Notification.Builder(c, CHANNEL)
+                .setSmallIcon(R.drawable.ic_moon)
+                .setContentTitle("Sleep Timer active")
+                .setContentText(what + " – " + when)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(open)
+                .addAction(new Notification.Action.Builder(null, "End", endNow).build());
+        nm.notify(NOTE_ID, b.build());
     }
 }
