@@ -176,12 +176,14 @@ public class MainActivity extends Activity {
         LinearLayout centre = new LinearLayout(this);
         centre.setOrientation(LinearLayout.VERTICAL);
         centre.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        centre.setPadding(0, dp(94), 0, 0);
+        centre.setPadding(0, dp(90), 0, 0);
         clockView = text("", 21, WHITE, true);
         clockView.setGravity(Gravity.CENTER);
         ringLabel = text("", 13, MUTED, false);
         ringLabel.setGravity(Gravity.CENTER);
-        centre.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(52)));
+        clockView.setIncludeFontPadding(false);
+        clockView.setLineSpacing(0f, 1.05f);
+        centre.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(62)));
         centre.addView(ringLabel, new LinearLayout.LayoutParams(MATCH, dp(16)));
         ringBox.addView(centre, new FrameLayout.LayoutParams(MATCH, MATCH));
         ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(212), dp(212), Gravity.CENTER));
