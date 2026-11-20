@@ -184,7 +184,9 @@ public class MainActivity extends Activity {
         clockView.setIncludeFontPadding(false);
         clockView.setLineSpacing(0f, 1.05f);
         centre.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(62)));
-        centre.addView(ringLabel, new LinearLayout.LayoutParams(MATCH, dp(16)));
+        ringLabel.setIncludeFontPadding(false);
+        ringLabel.setGravity(Gravity.CENTER);
+        centre.addView(ringLabel, new LinearLayout.LayoutParams(MATCH, dp(22)));
         ringBox.addView(centre, new FrameLayout.LayoutParams(MATCH, MATCH));
         ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(212), dp(212), Gravity.CENTER));
 

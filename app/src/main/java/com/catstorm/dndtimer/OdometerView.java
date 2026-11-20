@@ -184,13 +184,13 @@ class OdometerView extends View {
             float cos = (float) Math.cos(rad);
             float y = cy + radiusPx * (float) Math.sin(rad);
             float ad = Math.min(Math.abs(d), 2f);
-            text.setTextSize((18f - ad * 1.5f) * density);
+            text.setTextSize((21f - ad * 2.5f) * density);
             text.setColor(Math.abs(d) < 0.5f ? 0xFFFFFFFF : 0xFFAAB6E0);
             text.setAlpha((int) (255 * Math.pow(Math.max(0f, cos), 1.3)));
             canvas.save();
             canvas.translate(cx, y);
             canvas.scale(1f, Math.max(0.05f, cos));
-            canvas.drawText(labels[i], 0, 6.5f * density, text);
+            canvas.drawText(labels[i], 0, 7.5f * density, text);
             canvas.restore();
         }
 
