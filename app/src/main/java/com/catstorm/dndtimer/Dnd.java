@@ -35,7 +35,7 @@ final class Dnd {
     static final String KEY_START = "start";
     static final String KEY_END = "end";          // 0 = no automatic end
     static final String KEY_MODE = "mode";
-    static final String KEY_SEL_MODE = "selMode";
+    static final String KEY_SEL_MODE = "selMode2";
     static final String KEY_SEL_IDX = "selIdx";
     static final String KEY_SEL_IDX_V2 = "selIdx2";
     static final String KEY_SEL_MUSIC = "selMusic";

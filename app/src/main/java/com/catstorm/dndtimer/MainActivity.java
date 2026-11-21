@@ -115,7 +115,7 @@ public class MainActivity extends Activity {
 
         nm = getSystemService(NotificationManager.class);
         SharedPreferences p = Dnd.prefs(this);
-        selMode = p.getInt(Dnd.KEY_SEL_MODE, Dnd.SILENT) == Dnd.DND ? Dnd.DND : Dnd.SILENT;
+        selMode = p.getInt(Dnd.KEY_SEL_MODE, Dnd.DND) == Dnd.SILENT ? Dnd.SILENT : Dnd.DND;
         selIdx = Math.max(0, Math.min(LABELS.length - 1, p.getInt(Dnd.KEY_SEL_IDX_V2, DEFAULT_IDX)));
         selMusic = p.getBoolean(Dnd.KEY_SEL_MUSIC, false);
         selDays = p.getInt(Dnd.KEY_REP_MASK, 0);
@@ -247,8 +247,8 @@ public class MainActivity extends Activity {
 
         LinearLayout row = new LinearLayout(this);
         row.setBaselineAligned(false);
-        row.addView(cardSilent, lin(0, MATCH, 1f, 0, 0, 5, 0));
-        row.addView(cardDnd, lin(0, MATCH, 1f, 5, 0, 0, 0));
+        row.addView(cardDnd, lin(0, MATCH, 1f, 0, 0, 5, 0));
+        row.addView(cardSilent, lin(0, MATCH, 1f, 5, 0, 0, 0));
         modeRowView = row;
         col.addView(row, lin(MATCH, dp(44), 0f, 0, 4, 0, 0));
 
