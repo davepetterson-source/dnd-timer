@@ -91,8 +91,18 @@ public class MainActivity extends Activity {
     private TextView durCaption;
     private LinearLayout clockBox;
     private LinearLayout modeRowView;
-    private LinearLayout repeatRow;
-    private final TextView[] dayChips = new TextView[7];
+    private LinearLayout repPill;
+    private TextView repPillText;
+    private ImageView leftTitleIcon;
+    private TextView leftTitle;
+    private TextView rightTitle;
+    private LinearLayout startedBox;
+    private LinearLayout endBox;
+    private FrameLayout wheelBox;
+    private TextView[] zeds;
+    private android.animation.ObjectAnimator[] zedAnims;
+    private boolean zedsRunning = false;
+    private int[] zedBaseX;
     private int selDays = 0;
     private int selSt = 0;
     private TextView musicState;
@@ -100,10 +110,8 @@ public class MainActivity extends Activity {
     private LinearLayout goBar;
     private ImageView goIcon;
     private TextView goText;
-    private TextView startLabel;
     private TextView startVal;
     private TextView startDay;
-    private TextView endLabel;
     private TextView endVal;
     private TextView endDay;
 
@@ -134,6 +142,9 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(tick);
+        if (zedsRunning) {
+            stopZeds();
+        }
     }
 
     // ------------------------------------------------------------------ UI
@@ -226,7 +237,103 @@ public class MainActivity extends Activity {
         ringBox.addView(centre, new FrameLayout.LayoutParams(MATCH, MATCH));
         clockBox = centre;
         ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(212), dp(212), Gravity.CENTER));
+        zeds = new TextView[3];
+        zedAnims = new android.animation.ObjectAnimator[3];
+        int[] zx = {104, 118, 132};
+        int[] zy = {64, 46, 24};
+        float[] zs = {16, 22, 28};
+        for (int i = 0; i < 3; i++) {
+            TextView z = text(i == 0 ? "z" : "Z", zs[i], 0xFFCFD8FF, true);
+            z.setTypeface(Typeface.create(Typeface.DEFAULT_BOLD, Typeface.ITALIC));
+            z.setShadowLayer(dp(5), 0, 0, 0xCC8CA0FF);
+            z.setAlpha(0f);
+            z.setVisibility(View.GONE);
+            FrameLayout.LayoutParams zp = new FrameLayout.LayoutParams(WRAP, WRAP,
+                    Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            zp.topMargin = dp(zy[i] + 8);
+            ringCard.addView(z, zp);
+            z.setTranslationX(dp(zx[i]));
+            zeds[i] = z;
+        }
+        zedBaseX = zx;
         col.addView(ringCard, lin(MATCH, dp(218), 0f, 0, 10, 0, 0));
+
+        // Start at / Ends at cards
+        LinearLayout bottom = new LinearLayout(this);
+        bottom.setBaselineAligned(false);
+
+        LinearLayout leftCol = new LinearLayout(this);
+        leftCol.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout leftCard = new LinearLayout(this);
+        leftCard.setOrientation(LinearLayout.VERTICAL);
+        leftCard.setPadding(dp(6), dp(4), dp(6), dp(6));
+        leftCard.setBackground(rect(PANEL_FILL, PANEL_STROKE, 1, 16));
+        LinearLayout lt = new LinearLayout(this);
+        lt.setGravity(Gravity.CENTER_VERTICAL);
+        lt.setPadding(dp(6), 0, 0, 0);
+        leftTitleIcon = icon(R.drawable.ic_play_circle, 22, 0xFF3FD97F);
+        leftTitle = text("Start at", 16, WHITE, true);
+        leftTitle.setIncludeFontPadding(false);
+        lt.addView(leftTitleIcon, new LinearLayout.LayoutParams(dp(22), dp(22)));
+        lt.addView(leftTitle, lin(WRAP, WRAP, 0f, 7, 0, 0, 0));
+        leftCard.addView(lt, new LinearLayout.LayoutParams(MATCH, dp(28)));
+
+        stWheel = new OdometerView(this, START_LABELS, selSt);
+        stWheel.setListener(index -> {
+            selSt = index;
+            refresh();
+        });
+        wheelBox = new FrameLayout(this);
+        wheelBox.addView(stWheel, new FrameLayout.LayoutParams(MATCH, MATCH));
+        startedBox = new LinearLayout(this);
+        startedBox.setOrientation(LinearLayout.VERTICAL);
+        startedBox.setGravity(Gravity.CENTER);
+        startVal = text("", 24, WHITE, true);
+        startVal.setGravity(Gravity.CENTER);
+        startDay = text("", 15, MUTED, false);
+        startDay.setGravity(Gravity.CENTER);
+        startedBox.addView(startVal, new LinearLayout.LayoutParams(WRAP, WRAP));
+        startedBox.addView(startDay, new LinearLayout.LayoutParams(WRAP, WRAP));
+        wheelBox.addView(startedBox, new FrameLayout.LayoutParams(MATCH, MATCH));
+        leftCard.addView(wheelBox, lin(MATCH, dp(120), 0f, 0, 2, 0, 0));
+        leftCol.addView(leftCard, new LinearLayout.LayoutParams(MATCH, WRAP));
+
+        // Repeat pill under the Start at card
+        repPill = new LinearLayout(this);
+        repPill.setGravity(Gravity.CENTER);
+        repPill.setPadding(dp(10), 0, dp(10), 0);
+        repPill.addView(icon(R.drawable.ic_repeat, 16, WHITE), new LinearLayout.LayoutParams(dp(16), dp(16)));
+        repPillText = text("Repeat", 13, WHITE, true);
+        repPillText.setSingleLine(true);
+        repPillText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        repPill.addView(repPillText, lin(0, WRAP, 0f, 6, 0, 0, 0));
+        ((LinearLayout.LayoutParams) repPillText.getLayoutParams()).width = WRAP;
+        repPill.setOnClickListener(v -> showRepeat());
+        leftCol.addView(repPill, lin(MATCH, dp(34), 0f, 0, 8, 0, 0));
+        bottom.addView(leftCol, lin(0, WRAP, 0.9f, 0, 0, 5, 0));
+
+        LinearLayout right = new LinearLayout(this);
+        right.setOrientation(LinearLayout.VERTICAL);
+        right.setPadding(dp(6), dp(4), dp(6), dp(6));
+        right.setBackground(rect(PANEL_FILL, PANEL_STROKE, 1, 16));
+        LinearLayout rt = new LinearLayout(this);
+        rt.setGravity(Gravity.CENTER_VERTICAL);
+        rt.setPadding(dp(6), 0, 0, 0);
+        rt.addView(icon(R.drawable.ic_flag_solid, 22, 0xFFFFC233), new LinearLayout.LayoutParams(dp(22), dp(22)));
+        rightTitle = text("Ends at", 16, WHITE, true);
+        rightTitle.setIncludeFontPadding(false);
+        rt.addView(rightTitle, lin(WRAP, WRAP, 0f, 7, 0, 0, 0));
+        right.addView(rt, new LinearLayout.LayoutParams(MATCH, dp(28)));
+        endBox = new LinearLayout(this);
+        endBox.setOrientation(LinearLayout.VERTICAL);
+        endBox.setGravity(Gravity.CENTER);
+        endVal = text("", 22, WHITE, true);
+        endDay = text("", 14, MUTED, false);
+        endBox.addView(endVal, new LinearLayout.LayoutParams(WRAP, WRAP));
+        endBox.addView(endDay, new LinearLayout.LayoutParams(WRAP, WRAP));
+        right.addView(endBox, lin(MATCH, dp(120), 0f, 0, 2, 0, 0));
+        bottom.addView(right, lin(0, WRAP, 1.1f, 5, 0, 0, 0));
+        col.addView(bottom, lin(MATCH, WRAP, 0f, 0, 10, 0, 0));
 
         // Choose mode
         LinearLayout modeHead = new LinearLayout(this);
@@ -279,70 +386,6 @@ public class MainActivity extends Activity {
         musicRow.addView(musicSwitch, new LinearLayout.LayoutParams(WRAP, WRAP));
         col.addView(musicRow, lin(MATCH, dp(54), 0f, 0, 8, 0, 0));
 
-        // Duration wheel (left) + start / end times (right)
-        LinearLayout bottom = new LinearLayout(this);
-        bottom.setBaselineAligned(false);
-
-        LinearLayout left = new LinearLayout(this);
-        left.setOrientation(LinearLayout.VERTICAL);
-        TextView stTitle = text("Start at", 17, WHITE, true);
-        stTitle.setGravity(Gravity.CENTER);
-        stTitle.setTranslationY(-dp(1));
-        stTitle.setIncludeFontPadding(false);
-        left.addView(stTitle, new LinearLayout.LayoutParams(MATCH, dp(28)));
-
-        stWheel = new OdometerView(this, START_LABELS, selSt);
-        stWheel.setListener(index -> {
-            selSt = index;
-            refresh();
-        });
-        FrameLayout wheelBox = new FrameLayout(this);
-        wheelBox.addView(stWheel, new FrameLayout.LayoutParams(MATCH, MATCH));
-        left.addView(wheelBox, lin(MATCH, dp(140), 0f, 0, 3, 0, 0));
-        bottom.addView(left, lin(0, WRAP, 0.9f, 0, 0, 5, 0));
-
-        LinearLayout right = new LinearLayout(this);
-        right.setOrientation(LinearLayout.VERTICAL);
-        TextView schTitle = text("Schedule", 17, WHITE, true);
-        schTitle.setGravity(Gravity.CENTER);
-        schTitle.setTranslationY(-dp(1));
-        schTitle.setIncludeFontPadding(false);
-        right.addView(schTitle, new LinearLayout.LayoutParams(MATCH, dp(28)));
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(12), 0, dp(12), 0);
-        box.setBackground(rect(PANEL_FILL, PANEL_STROKE, 1, 16));
-        box.addView(timeRow(R.drawable.ic_clock, true), new LinearLayout.LayoutParams(MATCH, 0, 1f));
-        View divider = new View(this);
-        divider.setBackgroundColor(PANEL_STROKE);
-        box.addView(divider, new LinearLayout.LayoutParams(MATCH, dp(1)));
-        box.addView(timeRow(R.drawable.ic_flag, false), new LinearLayout.LayoutParams(MATCH, 0, 1f));
-        right.addView(box, lin(MATCH, dp(140), 0f, 0, 3, 0, 0));
-        bottom.addView(right, lin(0, WRAP, 1.1f, 5, 0, 0, 0));
-
-        col.addView(bottom, lin(MATCH, WRAP, 0f, 0, 10, 0, 0));
-
-        // Repeat: days of the week
-        repeatRow = new LinearLayout(this);
-        repeatRow.setGravity(Gravity.CENTER_VERTICAL);
-        repeatRow.addView(text("Repeat", 17, WHITE, true), lin(WRAP, WRAP, 0f, 0, 0, 8, 0));
-        String[] dl = {"M", "T", "W", "T", "F", "S", "S"};
-        LinearLayout chips = new LinearLayout(this);
-        chips.setGravity(Gravity.CENTER_VERTICAL);
-        for (int i = 0; i < 7; i++) {
-            final int bit = 1 << i;
-            TextView chip = text(dl[i], 13, 0xFFAAB6E0, true);
-            chip.setGravity(Gravity.CENTER);
-            chip.setOnClickListener(v -> {
-                selDays ^= bit;
-                refresh();
-            });
-            dayChips[i] = chip;
-            chips.addView(chip, new LinearLayout.LayoutParams(0, dp(34), 1f));
-        }
-        repeatRow.addView(chips, new LinearLayout.LayoutParams(0, WRAP, 1f));
-        col.addView(repeatRow, lin(MATCH, dp(38), 0f, 0, 8, 0, 0));
-
         goBar = new LinearLayout(this);
         goBar.setGravity(Gravity.CENTER);
         goIcon = icon(R.drawable.ic_play, 18, WHITE);
@@ -353,34 +396,6 @@ public class MainActivity extends Activity {
         goBar.setOnClickListener(v -> toggle());
         col.addView(goBar, lin(MATCH, dp(54), 0f, 0, 12, 0, 0));
         return root;
-    }
-
-    private LinearLayout timeRow(int iconRes, boolean isStart) {
-        LinearLayout c = new LinearLayout(this);
-        c.setGravity(Gravity.CENTER_VERTICAL);
-        c.addView(icon(iconRes, 22, 0xFFCFD8FF), new LinearLayout.LayoutParams(dp(22), dp(22)));
-        LinearLayout t = new LinearLayout(this);
-        t.setOrientation(LinearLayout.VERTICAL);
-        TextView label = text("", 12, MUTED, false);
-        LinearLayout valRow = new LinearLayout(this);
-        valRow.setGravity(Gravity.BOTTOM);
-        TextView val = text("", 19, WHITE, true);
-        TextView day = text("", 12, MUTED, false);
-        valRow.addView(val);
-        valRow.addView(day, lin(WRAP, WRAP, 0f, 4, 0, 0, 2));
-        t.addView(label);
-        t.addView(valRow);
-        c.addView(t, lin(WRAP, WRAP, 0f, 10, 0, 0, 0));
-        if (isStart) {
-            startLabel = label;
-            startVal = val;
-            startDay = day;
-        } else {
-            endLabel = label;
-            endVal = val;
-            endDay = day;
-        }
-        return c;
     }
 
     private LinearLayout modeCard(int iconRes, int circleColor, String title) {
@@ -437,7 +452,9 @@ public class MainActivity extends Activity {
             }
             int mask = selSt > 0 ? selDays : 0;
             long startAt = selSt > 0 ? Dnd.nextStart(selSt, mask, System.currentTimeMillis()) : 0;
-            if (!Dnd.start(this, selMode, MINUTES[selIdx], selMusic, startAt, selSt, mask)) {
+            if (Dnd.start(this, selMode, MINUTES[selIdx], selMusic, startAt, selSt, mask)) {
+                Dnd.prefs(this).edit().putBoolean("startedNow", selSt == 0).apply();
+            } else {
                 Toast.makeText(this,
                         "Switch on “KipQuiet” under Do Not Disturb access, then come back and press Start",
                         Toast.LENGTH_LONG).show();
@@ -477,14 +494,11 @@ public class MainActivity extends Activity {
         if (!idle) {
             selDays = p.getInt(Dnd.KEY_REP_MASK, 0);
         }
-        boolean repOk = idle && planned;
-        repeatRow.setAlpha(repOk ? 1f : 0.4f);
-        for (int i = 0; i < 7; i++) {
-            boolean on = (selDays & (1 << i)) != 0;
-            dayChips[i].setEnabled(repOk);
-            dayChips[i].setTextColor(on ? WHITE : 0xFFAAB6E0);
-            dayChips[i].setBackground(on ? ovalBg(0xFF6A5CF5, 0xFFB3A8FF) : ovalBg(0x99101A46, 0x66829AE6));
-        }
+        boolean hasDays = selDays != 0;
+        repPill.setEnabled(idle);
+        repPill.setAlpha(idle || hasDays ? 1f : 0.5f);
+        repPill.setBackground(hasDays ? rect(0xFF6A5CF5, 0xFFB3A8FF, 1, 17) : rect(0x99101A46, 0x80829AE6, 1, 17));
+        repPillText.setText(hasDays ? daysSummary(selDays) : "Repeat");
 
         // Controls: greyed out and locked once scheduled or running
         durWheel.setEnabled(idle);
@@ -494,7 +508,14 @@ public class MainActivity extends Activity {
         clockBox.setVisibility(idle ? View.GONE : View.VISIBLE);
         stWheel.setEnabled(idle);
         stWheel.setSelected(selSt);
+        boolean startedNow = active && p.getBoolean("startedNow", false);
         stWheel.setAlpha(idle ? 1f : 0.4f);
+        stWheel.setVisibility(startedNow ? View.GONE : View.VISIBLE);
+        startedBox.setVisibility(startedNow ? View.VISIBLE : View.GONE);
+        leftTitleIcon.setImageResource(startedNow ? R.drawable.ic_clock : R.drawable.ic_play_circle);
+        leftTitle.setText(startedNow ? "Started" : "Start at");
+        rightTitle.setText(active ? "Ends" : "Ends at");
+        endBox.setBackground(active ? null : rect(0x99080E2C, PANEL_STROKE, 1, 14));
         modeRowView.setAlpha(idle ? 1f : 0.4f);
         musicRow.setAlpha(idle ? 1f : 0.4f);
         musicSwitch.setEnabled(idle);
@@ -576,16 +597,161 @@ public class MainActivity extends Activity {
         g.setCornerRadius(dp(27));
         goBar.setBackground(g);
 
-        // Schedule box
-        boolean showStart = active || sched || planned;
-        startLabel.setText(active ? "Started at" : (sched || planned ? "Starts at" : "Will start"));
-        startVal.setText(showStart ? hhmm(start) : "Now");
-        String sd = showStart ? dayStr(start, now) : "";
-        startDay.setText(sd);
-        startDay.setVisibility(sd.isEmpty() ? View.GONE : View.VISIBLE);
-        endLabel.setText(active ? "Ends at" : "Will end at");
+        // Start / end times
+        startVal.setText(hhmm(start));
+        startDay.setText(dayStr(start, now));
         endVal.setText(end == 0 ? "--:--" : hhmm(end));
         endDay.setText(end == 0 ? "no end time" : dayStr(end, now));
+
+        // Sleeping zeds while the timer runs
+        if (active && !zedsRunning) {
+            startZeds();
+        } else if (!active && zedsRunning) {
+            stopZeds();
+        }
+    }
+
+    private void startZeds() {
+        zedsRunning = true;
+        for (int i = 0; i < 3; i++) {
+            TextView z = zeds[i];
+            z.setVisibility(View.VISIBLE);
+            z.setScaleX(0.6f);
+            z.setScaleY(0.6f);
+            android.animation.ObjectAnimator an = android.animation.ObjectAnimator.ofPropertyValuesHolder(z,
+                    android.animation.PropertyValuesHolder.ofFloat(View.ALPHA, 0f, 0.95f, 0.7f, 0f),
+                    android.animation.PropertyValuesHolder.ofFloat(View.TRANSLATION_X, dp(zedBaseX[i]), dp(zedBaseX[i] + 26)),
+                    android.animation.PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, 0f, -dp(58)),
+                    android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 0.6f, 1.25f),
+                    android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.6f, 1.25f));
+            an.setDuration(3600);
+            an.setStartDelay(i * 1200L);
+            an.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+            an.setInterpolator(new android.view.animation.LinearInterpolator());
+            zedAnims[i] = an;
+            an.start();
+        }
+    }
+
+    private void stopZeds() {
+        zedsRunning = false;
+        for (int i = 0; i < 3; i++) {
+            if (zedAnims[i] != null) {
+                zedAnims[i].cancel();
+            }
+            zeds[i].setAlpha(0f);
+            zeds[i].setVisibility(View.GONE);
+        }
+    }
+
+    private static String daysSummary(int mask) {
+        if (mask == 127) {
+            return "Every day";
+        }
+        if (mask == 31) {
+            return "Weekdays";
+        }
+        if (mask == 96) {
+            return "Weekends";
+        }
+        String[] n = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 7; i++) {
+            if ((mask & (1 << i)) != 0) {
+                if (sb.length() > 0) {
+                    sb.append(", ");
+                }
+                sb.append(n[i]);
+            }
+        }
+        return sb.toString();
+    }
+
+    private void showRepeat() {
+        if (locked()) {
+            return;
+        }
+        final Dialog d = new Dialog(this);
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout sheet = new LinearLayout(this);
+        sheet.setOrientation(LinearLayout.VERTICAL);
+        sheet.setPadding(dp(16), dp(12), dp(16), dp(24));
+        float r = dp(28);
+        GradientDrawable sbg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xFF18265A, 0xFF0C1438});
+        sbg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
+        sheet.setBackground(sbg);
+        View grabber = new View(this);
+        grabber.setBackground(rect(0x73BEC8F0, 0, 0, 3));
+        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(dp(44), dp(5));
+        gp.gravity = Gravity.CENTER_HORIZONTAL;
+        sheet.addView(grabber, gp);
+        sheet.addView(text("Repeat on", 24, WHITE, true), lin(MATCH, WRAP, 0f, 0, 14, 0, 0));
+        sheet.addView(text("Starts at the Start at time on the days you choose", 13, 0xFFB8C6F2, false),
+                lin(MATCH, WRAP, 0f, 0, 2, 0, 0));
+
+        String[] dl = {"M", "T", "W", "T", "F", "S", "S"};
+        final TextView[] chips = new TextView[7];
+        LinearLayout rowChips = new LinearLayout(this);
+        for (int i = 0; i < 7; i++) {
+            final int idx = i;
+            TextView chip = text(dl[i], 15, WHITE, true);
+            chip.setGravity(Gravity.CENTER);
+            chip.setOnClickListener(v -> {
+                selDays ^= (1 << idx);
+                if ((selDays & (1 << idx)) != 0 && selSt == 0) {
+                    java.util.Calendar c = java.util.Calendar.getInstance();
+                    int mod = c.get(java.util.Calendar.HOUR_OF_DAY) * 60 + c.get(java.util.Calendar.MINUTE);
+                    selSt = ((mod / 15 + 1) % 96) + 1;
+                    stWheel.setSelected(selSt);
+                }
+                styleDayChips(chips);
+                refresh();
+            });
+            chips[i] = chip;
+            rowChips.addView(chip, lin(0, dp(44), 1f, 3, 0, 3, 0));
+        }
+        styleDayChips(chips);
+        sheet.addView(rowChips, lin(MATCH, WRAP, 0f, 0, 18, 0, 0));
+
+        LinearLayout btns = new LinearLayout(this);
+        TextView clear = text("Clear", 15, 0xFFDBE3FF, true);
+        clear.setGravity(Gravity.CENTER);
+        clear.setBackground(rect(0, 0x80829AE6, 1, 25));
+        clear.setOnClickListener(v -> {
+            selDays = 0;
+            refresh();
+            d.dismiss();
+        });
+        TextView done = text("Done", 18, WHITE, true);
+        done.setGravity(Gravity.CENTER);
+        GradientDrawable dbg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xFF6A5CF5, 0xFF4F40DF});
+        dbg.setCornerRadius(dp(25));
+        done.setBackground(dbg);
+        done.setOnClickListener(v -> d.dismiss());
+        btns.addView(clear, lin(dp(110), dp(50), 0f, 0, 0, 10, 0));
+        btns.addView(done, lin(0, dp(50), 1f, 0, 0, 0, 0));
+        sheet.addView(btns, lin(MATCH, WRAP, 0f, 0, 22, 0, 0));
+
+        d.setContentView(sheet);
+        Window w = d.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            w.setLayout(MATCH, WRAP);
+            w.setGravity(Gravity.BOTTOM);
+            w.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            w.setDimAmount(0.6f);
+        }
+        d.show();
+    }
+
+    private void styleDayChips(TextView[] chips) {
+        for (int i = 0; i < 7; i++) {
+            boolean on = (selDays & (1 << i)) != 0;
+            chips[i].setBackground(on ? ovalBg(0xFF6A5CF5, 0xFFB3A8FF) : ovalBg(0x99101A46, 0x66829AE6));
+            chips[i].setTextColor(on ? WHITE : 0xFFAAB6E0);
+        }
     }
 
     // ------------------------------------------------------------------ pop-up
