@@ -140,21 +140,14 @@ final class Dnd {
             e.putInt(KEY_PREV_CONV, Build.VERSION.SDK_INT >= 30 ? pol.priorityConversationSenders : 0);
         }
 
-        boolean changePolicy = music || mode == DND;
+        boolean changePolicy = music;
         if (changePolicy) {
             int cats = NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
             int calls = NotificationManager.Policy.PRIORITY_SENDERS_ANY;
             int msgs = NotificationManager.Policy.PRIORITY_SENDERS_ANY;
             int conv = 2; /* CONVERSATION_SENDERS_NONE */
             if (mode == DND) {
-                int base = pol.priorityCategories;
-                if (music) {
-                    cats = base | NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
-                } else {
-                    // No music: also mute media and touch/system sounds (e.g. chat "sent" pops)
-                    cats = base & ~(NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA
-                            | NotificationManager.Policy.PRIORITY_CATEGORY_SYSTEM);
-                }
+                cats = pol.priorityCategories | NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
                 calls = pol.priorityCallSenders;
                 msgs = pol.priorityMessageSenders;
                 conv = Build.VERSION.SDK_INT >= 30 ? pol.priorityConversationSenders : 0;

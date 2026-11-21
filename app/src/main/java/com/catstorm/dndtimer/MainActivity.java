@@ -285,7 +285,10 @@ public class MainActivity extends Activity {
 
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
-        left.addView(text("Start at", 17, WHITE, true), new LinearLayout.LayoutParams(MATCH, dp(22)));
+        TextView stTitle = text("Start at", 17, WHITE, true);
+        stTitle.setGravity(Gravity.CENTER);
+        stTitle.setTranslationY(-dp(3));
+        left.addView(stTitle, new LinearLayout.LayoutParams(MATCH, dp(22)));
 
         stWheel = new OdometerView(this, START_LABELS, selSt);
         stWheel.setListener(index -> {
@@ -294,12 +297,15 @@ public class MainActivity extends Activity {
         });
         FrameLayout wheelBox = new FrameLayout(this);
         wheelBox.addView(stWheel, new FrameLayout.LayoutParams(MATCH, MATCH));
-        left.addView(wheelBox, lin(MATCH, dp(140), 0f, 0, 4, 0, 0));
+        left.addView(wheelBox, lin(MATCH, dp(140), 0f, 0, 7, 0, 0));
         bottom.addView(left, lin(0, WRAP, 0.9f, 0, 0, 5, 0));
 
         LinearLayout right = new LinearLayout(this);
         right.setOrientation(LinearLayout.VERTICAL);
-        right.addView(text("Schedule", 17, WHITE, true), new LinearLayout.LayoutParams(MATCH, dp(22)));
+        TextView schTitle = text("Schedule", 17, WHITE, true);
+        schTitle.setGravity(Gravity.CENTER);
+        schTitle.setTranslationY(-dp(3));
+        right.addView(schTitle, new LinearLayout.LayoutParams(MATCH, dp(22)));
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(12), 0, dp(12), 0);
@@ -309,7 +315,7 @@ public class MainActivity extends Activity {
         divider.setBackgroundColor(PANEL_STROKE);
         box.addView(divider, new LinearLayout.LayoutParams(MATCH, dp(1)));
         box.addView(timeRow(R.drawable.ic_flag, false), new LinearLayout.LayoutParams(MATCH, 0, 1f));
-        right.addView(box, lin(MATCH, dp(140), 0f, 0, 4, 0, 0));
+        right.addView(box, lin(MATCH, dp(140), 0f, 0, 7, 0, 0));
         bottom.addView(right, lin(0, WRAP, 1.1f, 5, 0, 0, 0));
 
         col.addView(bottom, lin(MATCH, WRAP, 0f, 0, 10, 0, 0));
@@ -317,7 +323,7 @@ public class MainActivity extends Activity {
         // Repeat: days of the week
         repeatRow = new LinearLayout(this);
         repeatRow.setGravity(Gravity.CENTER_VERTICAL);
-        repeatRow.addView(text("Repeat", 17, WHITE, true), lin(dp(64), WRAP, 0f, 0, 0, 0, 0));
+        repeatRow.addView(text("Repeat", 17, WHITE, true), lin(WRAP, WRAP, 0f, 0, 0, 8, 0));
         String[] dl = {"M", "T", "W", "T", "F", "S", "S"};
         LinearLayout chips = new LinearLayout(this);
         chips.setGravity(Gravity.CENTER_VERTICAL);
