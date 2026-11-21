@@ -27,7 +27,8 @@ final class Dnd {
     static final int SILENT = 0;
     static final int DND = 1;
 
-    static final String ACTION_END = "com.catstorm.dndtimer.END";
+    static final String ACTION_END = "com.catstorm.dndtimer.END";      // timer ran out (alarm)
+    static final String ACTION_STOP = "com.catstorm.dndtimer.STOP";    // user pressed End / Cancel
     static final String ACTION_BEGIN = "com.catstorm.dndtimer.BEGIN";
 
     static final String KEY_ACTIVE = "active";
@@ -40,6 +41,11 @@ final class Dnd {
     static final String KEY_SEL_MUSIC = "selMusic";
     private static final String KEY_POLICY_CHANGED = "ppc";
     private static final String KEY_MUSIC = "music";
+    static final String KEY_REP_MASK = "repMask";   // days of the week, bit 0 = Monday ... bit 6 = Sunday
+    private static final String KEY_REP_IDX = "repIdx";
+    private static final String KEY_REP_MODE = "repMode";
+    private static final String KEY_REP_MIN = "repMin";
+    private static final String KEY_REP_MUSIC = "repMusic";
     static final String KEY_SCHED = "sched";
     static final String KEY_SCHED_START = "schedStart";
     static final String KEY_SCHED_MODE = "schedMode";
@@ -65,13 +71,21 @@ final class Dnd {
      * Starts a session now, or at startAt (a clock time in the future) if that is given.
      * minutes < 0 means "until I turn it off". False if DND access is not granted.
      */
-    static boolean start(Context c, int mode, int minutes, boolean music, long startAt) {
+    static boolean start(Context c, int mode, int minutes, boolean music, long startAt, int stIdx, int repMask) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (!nm.isNotificationPolicyAccessGranted()) {
             return false;
         }
         expireIfDue(c);
         if (startAt > System.currentTimeMillis() + 1000) {
+            SharedPreferences.Editor re = prefs(c).edit();
+            if (repMask != 0) {
+                re.putInt(KEY_REP_MASK, repMask).putInt(KEY_REP_IDX, stIdx).putInt(KEY_REP_MODE, mode)
+                        .putInt(KEY_REP_MIN, minutes).putBoolean(KEY_REP_MUSIC, music);
+            } else {
+                re.remove(KEY_REP_MASK);
+            }
+            re.apply();
             prefs(c).edit().putBoolean(KEY_SCHED, true).putLong(KEY_SCHED_START, startAt)
                     .putInt(KEY_SCHED_MODE, mode).putInt(KEY_SCHED_MIN, minutes)
                     .putBoolean(KEY_SCHED_MUSIC, music).apply();
@@ -161,8 +175,49 @@ final class Dnd {
         return true;
     }
 
-    /** Puts DND back exactly how it was and clears the timer. */
+    /** The user ended or cancelled it: put everything back and stop any repeating too. */
     static void stop(Context c) {
+        prefs(c).edit().remove(KEY_REP_MASK).apply();
+        stopCore(c);
+    }
+
+    /** The timer ran out by itself: put everything back, and line up the next repeat if there is one. */
+    static void finish(Context c) {
+        stopCore(c);
+        SharedPreferences p = prefs(c);
+        int mask = p.getInt(KEY_REP_MASK, 0);
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        if (mask != 0 && nm.isNotificationPolicyAccessGranted()) {
+            long at = nextStart(p.getInt(KEY_REP_IDX, 1), mask, System.currentTimeMillis());
+            p.edit().putBoolean(KEY_SCHED, true).putLong(KEY_SCHED_START, at)
+                    .putInt(KEY_SCHED_MODE, p.getInt(KEY_REP_MODE, DND))
+                    .putInt(KEY_SCHED_MIN, p.getInt(KEY_REP_MIN, 60))
+                    .putBoolean(KEY_SCHED_MUSIC, p.getBoolean(KEY_REP_MUSIC, false)).apply();
+            schedule(c, at, pendingBegin(c));
+            showNotification(c);
+        }
+    }
+
+    /** Next time the clock reads the chosen time (15-minute steps from 00:00, idx 1 = 00:00) on an allowed day. */
+    static long nextStart(int stIdx, int mask, long now) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        for (int k = 0; k < 9; k++) {
+            c.setTimeInMillis(now);
+            c.add(java.util.Calendar.DAY_OF_YEAR, k);
+            c.set(java.util.Calendar.HOUR_OF_DAY, 0);
+            c.set(java.util.Calendar.MINUTE, 0);
+            c.set(java.util.Calendar.SECOND, 0);
+            c.set(java.util.Calendar.MILLISECOND, 0);
+            c.add(java.util.Calendar.MINUTE, (stIdx - 1) * 15);
+            int wd = (c.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7; // Monday = 0
+            if (c.getTimeInMillis() > now && (mask == 0 || (mask & (1 << wd)) != 0)) {
+                return c.getTimeInMillis();
+            }
+        }
+        return now + 86_400_000L;
+    }
+
+    private static void stopCore(Context c) {
         clearScheduled(c);
         SharedPreferences p = prefs(c);
         NotificationManager nm = c.getSystemService(NotificationManager.class);
@@ -191,7 +246,7 @@ final class Dnd {
         }
         long end = p.getLong(KEY_END, 0);
         if (p.getBoolean(KEY_ACTIVE, false) && end != 0 && end <= System.currentTimeMillis()) {
-            stop(c);
+            finish(c);
         }
     }
 
@@ -217,7 +272,7 @@ final class Dnd {
             return;
         }
         if (end <= System.currentTimeMillis()) {
-            stop(c);
+            finish(c);
         } else {
             schedule(c, end, pending(c));
         }
@@ -286,7 +341,7 @@ final class Dnd {
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         PendingIntent endNow = PendingIntent.getBroadcast(c, 1,
-                new Intent(c, DndReceiver.class).setAction(ACTION_END),
+                new Intent(c, DndReceiver.class).setAction(ACTION_STOP),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Notification.Builder b = new Notification.Builder(c, CHANNEL)

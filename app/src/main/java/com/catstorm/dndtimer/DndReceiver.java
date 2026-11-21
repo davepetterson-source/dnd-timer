@@ -12,6 +12,8 @@ public class DndReceiver extends BroadcastReceiver {
         } else if (Dnd.ACTION_BEGIN.equals(intent.getAction())) {
             Dnd.beginScheduled(context);
         } else if (Dnd.ACTION_END.equals(intent.getAction())) {
+            Dnd.finish(context);
+        } else if (Dnd.ACTION_STOP.equals(intent.getAction())) {
             Dnd.stop(context);
         }
     }

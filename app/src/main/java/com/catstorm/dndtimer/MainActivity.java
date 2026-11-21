@@ -91,6 +91,9 @@ public class MainActivity extends Activity {
     private TextView durCaption;
     private LinearLayout clockBox;
     private LinearLayout modeRowView;
+    private LinearLayout repeatRow;
+    private final TextView[] dayChips = new TextView[7];
+    private int selDays = 0;
     private int selSt = 0;
     private TextView musicState;
     private LinearLayout musicRow;
@@ -115,6 +118,7 @@ public class MainActivity extends Activity {
         selMode = p.getInt(Dnd.KEY_SEL_MODE, Dnd.SILENT) == Dnd.DND ? Dnd.DND : Dnd.SILENT;
         selIdx = Math.max(0, Math.min(LABELS.length - 1, p.getInt(Dnd.KEY_SEL_IDX_V2, DEFAULT_IDX)));
         selMusic = p.getBoolean(Dnd.KEY_SEL_MUSIC, false);
+        selDays = p.getInt(Dnd.KEY_REP_MASK, 0);
 
         setContentView(buildUi());
         refresh();
@@ -187,20 +191,23 @@ public class MainActivity extends Activity {
         durCaption.setLetterSpacing(0.12f);
         durCaption.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams dcl = new FrameLayout.LayoutParams(MATCH, WRAP, Gravity.TOP);
-        dcl.topMargin = dp(32);
+        dcl.topMargin = dp(28);
         ringBox.addView(durCaption, dcl);
 
         durWheel = new OdometerView(this, LABELS, selIdx);
-        durWheel.setCornerDp(54);
-        durWheel.setBaseSp(19);
+        durWheel.setCornerDp(60);
+        durWheel.setBaseSp(31);
+        durWheel.setPitchDp(38);
+        durWheel.setFitDp(156);
+        durWheel.setWindowHalfDp(20);
         durWheel.setListener(index -> {
             selIdx = index;
             Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_IDX_V2, index).apply();
             refresh();
         });
-        FrameLayout.LayoutParams dwl = new FrameLayout.LayoutParams(dp(150), dp(110),
+        FrameLayout.LayoutParams dwl = new FrameLayout.LayoutParams(dp(176), dp(122),
                 Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        dwl.topMargin = dp(52);
+        dwl.topMargin = dp(48);
         ringBox.addView(durWheel, dwl);
 
         // Countdown (shown while scheduled or running)
@@ -219,7 +226,7 @@ public class MainActivity extends Activity {
         ringBox.addView(centre, new FrameLayout.LayoutParams(MATCH, MATCH));
         clockBox = centre;
         ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(212), dp(212), Gravity.CENTER));
-        col.addView(ringCard, lin(MATCH, dp(226), 0f, 0, 10, 0, 0));
+        col.addView(ringCard, lin(MATCH, dp(218), 0f, 0, 10, 0, 0));
 
         // Choose mode
         LinearLayout modeHead = new LinearLayout(this);
@@ -231,7 +238,7 @@ public class MainActivity extends Activity {
         whatsThis.addView(icon(R.drawable.ic_info, 17, 0xFF7FB0FF), lin(dp(17), dp(17), 0f, 6, 0, 0, 0));
         whatsThis.setOnClickListener(v -> showInfo());
         modeHead.addView(whatsThis, new LinearLayout.LayoutParams(WRAP, dp(26)));
-        col.addView(modeHead, lin(MATCH, dp(28), 0f, 0, 12, 0, 0));
+        col.addView(modeHead, lin(MATCH, dp(28), 0f, 0, 8, 0, 0));
 
         cardSilent = modeCard(R.drawable.ic_speaker_off, 0xFF7A3FD0, "Silent");
         cardDnd = modeCard(R.drawable.ic_bell, 0xFF2F6BFF, "Do Not Disturb");
@@ -287,7 +294,7 @@ public class MainActivity extends Activity {
         });
         FrameLayout wheelBox = new FrameLayout(this);
         wheelBox.addView(stWheel, new FrameLayout.LayoutParams(MATCH, MATCH));
-        left.addView(wheelBox, lin(MATCH, dp(156), 0f, 0, 4, 0, 0));
+        left.addView(wheelBox, lin(MATCH, dp(140), 0f, 0, 4, 0, 0));
         bottom.addView(left, lin(0, WRAP, 0.9f, 0, 0, 5, 0));
 
         LinearLayout right = new LinearLayout(this);
@@ -302,10 +309,31 @@ public class MainActivity extends Activity {
         divider.setBackgroundColor(PANEL_STROKE);
         box.addView(divider, new LinearLayout.LayoutParams(MATCH, dp(1)));
         box.addView(timeRow(R.drawable.ic_flag, false), new LinearLayout.LayoutParams(MATCH, 0, 1f));
-        right.addView(box, lin(MATCH, dp(156), 0f, 0, 4, 0, 0));
+        right.addView(box, lin(MATCH, dp(140), 0f, 0, 4, 0, 0));
         bottom.addView(right, lin(0, WRAP, 1.1f, 5, 0, 0, 0));
 
         col.addView(bottom, lin(MATCH, WRAP, 0f, 0, 10, 0, 0));
+
+        // Repeat: days of the week
+        repeatRow = new LinearLayout(this);
+        repeatRow.setGravity(Gravity.CENTER_VERTICAL);
+        repeatRow.addView(text("Repeat", 17, WHITE, true), lin(dp(64), WRAP, 0f, 0, 0, 0, 0));
+        String[] dl = {"M", "T", "W", "T", "F", "S", "S"};
+        LinearLayout chips = new LinearLayout(this);
+        chips.setGravity(Gravity.CENTER_VERTICAL);
+        for (int i = 0; i < 7; i++) {
+            final int bit = 1 << i;
+            TextView chip = text(dl[i], 13, 0xFFAAB6E0, true);
+            chip.setGravity(Gravity.CENTER);
+            chip.setOnClickListener(v -> {
+                selDays ^= bit;
+                refresh();
+            });
+            dayChips[i] = chip;
+            chips.addView(chip, new LinearLayout.LayoutParams(0, dp(34), 1f));
+        }
+        repeatRow.addView(chips, new LinearLayout.LayoutParams(0, WRAP, 1f));
+        col.addView(repeatRow, lin(MATCH, dp(38), 0f, 0, 8, 0, 0));
 
         goBar = new LinearLayout(this);
         goBar.setGravity(Gravity.CENTER);
@@ -315,7 +343,7 @@ public class MainActivity extends Activity {
         goBar.addView(goIcon, new LinearLayout.LayoutParams(dp(18), dp(18)));
         goBar.addView(goText, lin(WRAP, WRAP, 0f, 9, 0, 0, 0));
         goBar.setOnClickListener(v -> toggle());
-        col.addView(goBar, lin(MATCH, dp(54), 0f, 0, 20, 0, 0));
+        col.addView(goBar, lin(MATCH, dp(54), 0f, 0, 12, 0, 0));
         return root;
     }
 
@@ -390,20 +418,6 @@ public class MainActivity extends Activity {
         refresh();
     }
 
-    /** The next time the clock reads the chosen "Start at" time (today if still ahead, otherwise tomorrow). */
-    private static long nextStart(int stIdx, long now) {
-        Calendar c = Calendar.getInstance();
-        c.setTimeInMillis(now);
-        midnight(c);
-        long t = c.getTimeInMillis() + (stIdx - 1) * 15L * 60_000L;
-        if (t <= now) {
-            c.setTimeInMillis(t);
-            c.add(Calendar.DAY_OF_YEAR, 1);
-            t = c.getTimeInMillis();
-        }
-        return t;
-    }
-
     private void toggle() {
         if (locked()) {
             Dnd.stop(this);
@@ -413,8 +427,9 @@ public class MainActivity extends Activity {
                     != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
             }
-            long startAt = selSt > 0 ? nextStart(selSt, System.currentTimeMillis()) : 0;
-            if (!Dnd.start(this, selMode, MINUTES[selIdx], selMusic, startAt)) {
+            int mask = selSt > 0 ? selDays : 0;
+            long startAt = selSt > 0 ? Dnd.nextStart(selSt, mask, System.currentTimeMillis()) : 0;
+            if (!Dnd.start(this, selMode, MINUTES[selIdx], selMusic, startAt, selSt, mask)) {
                 Toast.makeText(this,
                         "Switch on “KipQuiet” under Do Not Disturb access, then come back and press Start",
                         Toast.LENGTH_LONG).show();
@@ -447,8 +462,20 @@ public class MainActivity extends Activity {
             selMode = p.getInt(Dnd.KEY_SCHED_MODE, selMode);
         } else {
             minutes = MINUTES[selIdx];
-            start = planned ? nextStart(selSt, now) : now;
+            start = planned ? Dnd.nextStart(selSt, selDays, now) : now;
             end = minutes < 0 ? 0 : start + minutes * 60_000L;
+        }
+
+        if (!idle) {
+            selDays = p.getInt(Dnd.KEY_REP_MASK, 0);
+        }
+        boolean repOk = idle && planned;
+        repeatRow.setAlpha(repOk ? 1f : 0.4f);
+        for (int i = 0; i < 7; i++) {
+            boolean on = (selDays & (1 << i)) != 0;
+            dayChips[i].setEnabled(repOk);
+            dayChips[i].setTextColor(on ? WHITE : 0xFFAAB6E0);
+            dayChips[i].setBackground(on ? ovalBg(0xFF6A5CF5, 0xFFB3A8FF) : ovalBg(0x99101A46, 0x66829AE6));
         }
 
         // Controls: greyed out and locked once scheduled or running
@@ -502,6 +529,7 @@ public class MainActivity extends Activity {
         // Ring
         float frac = 0f;
         if (active) {
+            clockView.setTextSize(30);
             if (end == 0) {
                 clockView.setText("∞");
                 frac = 1f;
@@ -513,7 +541,14 @@ public class MainActivity extends Activity {
                 ringLabel.setText("of " + shortDur(minutes));
             }
         } else if (sched) {
-            clockView.setText(clockStr(Math.max(0, start - now)));
+            long wait = Math.max(0, start - now);
+            if (wait >= 86_400_000L) {
+                clockView.setText(longCount(wait));
+                clockView.setTextSize(26);
+            } else {
+                clockView.setText(clockStr(wait));
+                clockView.setTextSize(30);
+            }
             ringLabel.setText("until it starts");
         }
         ring.setFraction(frac);
@@ -746,6 +781,19 @@ public class MainActivity extends Activity {
             sb.append(r).append(r == 1 ? " Minute" : " Minutes");
         }
         return sb.toString();
+    }
+
+    private GradientDrawable ovalBg(int fill, int stroke) {
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(fill);
+        g.setStroke(dp(1), stroke);
+        return g;
+    }
+
+    private static String longCount(long ms) {
+        long m = ms / 60_000L;
+        return (m / 1440) + "d " + ((m % 1440) / 60) + "h " + (m % 60) + "m";
     }
 
     private static String shortDur(int m) {

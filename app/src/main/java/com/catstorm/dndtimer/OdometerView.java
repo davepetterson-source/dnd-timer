@@ -24,8 +24,10 @@ class OdometerView extends View {
 
     private final String[] labels;
     private final float density;
-    private final float rowPx;
-    private final float radiusPx;
+    private float rowPx;
+    private float radiusPx;
+    private float fitPx = 0f;
+    private float winHalfDp = 16f;
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -58,6 +60,24 @@ class OdometerView extends View {
 
     void setCornerDp(float dp) {
         cornerDp = dp;
+        invalidate();
+    }
+
+    /** Distance between rows in dp (default 28). */
+    void setPitchDp(float dp) {
+        rowPx = dp * density;
+        radiusPx = rowPx / 0.41888f;
+        invalidate();
+    }
+
+    /** Longest a label may be before its text is shrunk to fit, in dp. */
+    void setFitDp(float dp) {
+        fitPx = dp * density;
+        invalidate();
+    }
+
+    void setWindowHalfDp(float dp) {
+        winHalfDp = dp;
         invalidate();
     }
 
@@ -179,7 +199,7 @@ class OdometerView extends View {
 
         // lit window
         fill.setColor(0x2E786EFF);
-        rect.set(4 * density, cy - 16 * density, w - 4 * density, cy + 16 * density);
+        rect.set(4 * density, cy - winHalfDp * density, w - 4 * density, cy + winHalfDp * density);
         canvas.drawRoundRect(rect, 4 * density, 4 * density, fill);
         line.setColor(0x66FFFFFF);
         canvas.drawLine(rect.left, rect.top, rect.right, rect.top, line);
@@ -196,7 +216,14 @@ class OdometerView extends View {
             float cos = (float) Math.cos(rad);
             float y = cy + radiusPx * (float) Math.sin(rad);
             float ad = Math.min(Math.abs(d), 2f);
-            text.setTextSize((baseSp - ad * 2.5f) * density);
+            float sz = (baseSp - ad * (baseSp > 22f ? 5.5f : 2.5f)) * density;
+            text.setTextSize(sz);
+            if (fitPx > 0f) {
+                float wdt = text.measureText(labels[i]);
+                if (wdt > fitPx) {
+                    text.setTextSize(sz * fitPx / wdt);
+                }
+            }
             text.setColor(Math.abs(d) < 0.5f ? 0xFFFFFFFF : 0xFFAAB6E0);
             text.setAlpha((int) (255 * Math.pow(Math.max(0f, cos), 1.3)));
             canvas.save();
