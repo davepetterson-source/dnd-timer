@@ -589,7 +589,7 @@ public class MainActivity extends Activity {
         ScrollView sv = new ScrollView(this);
         LinearLayout sheet = new LinearLayout(this);
         sheet.setOrientation(LinearLayout.VERTICAL);
-        sheet.setPadding(dp(16), dp(12), dp(16), dp(28));
+        sheet.setPadding(dp(16), dp(12), dp(16), dp(24));
         float r = dp(28);
         GradientDrawable sbg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0xFF18265A, 0xFF0C1438});
@@ -609,38 +609,32 @@ public class MainActivity extends Activity {
         close.setPadding(dp(11), dp(11), dp(11), dp(11));
         close.setOnClickListener(v -> d.dismiss());
         titleRow.addView(close, new LinearLayout.LayoutParams(dp(44), dp(44)));
-        sheet.addView(titleRow, lin(MATCH, WRAP, 0f, 0, 12, 0, 0));
-        sheet.addView(text("Both modes help you get a more peaceful, distraction-free time.", 13, MUTED, false),
-                lin(WRAP, WRAP, 0f, 0, 2, 0, 0));
-
+        sheet.addView(titleRow, lin(MATCH, WRAP, 0f, 0, 6, 0, 0));
         LinearLayout cols = new LinearLayout(this);
         cols.setBaselineAligned(false);
-        cols.addView(featureCard(R.drawable.ic_speaker_off, 0xFFD64557, "Silent", "Complete silence for total peace.",
+        cols.addView(featureCard(R.drawable.ic_speaker_off, 0xFFD64557, "Silent", "Total silence",
                 0x8CF06478, 0x38962838,
-                new String[]{"No calls", "No notifications", "No sounds or vibrations", "Alarms are muted too",
-                        "Your phone stays completely silent"},
-                "Best for sleep or when you need total quiet.", 0x59962838),
+                new String[]{"No calls or notifications", "No sounds or vibrations", "Alarms muted too"},
+                "Best for sleep", 0x59962838),
                 lin(0, MATCH, 1f, 0, 0, 5, 0));
-        cols.addView(featureCard(R.drawable.ic_bell, 0xFF3F55FF, "Do Not Disturb",
-                "Reduces interruptions but allows important calls.", 0x8C648CFF, 0x401E3CA0,
-                new String[]{"Calls from selected contacts can ring through", "Notifications are silenced (or limited)",
-                        "Alarms and emergency calls still work", "Ideal for rest while staying available to important people"},
-                "Best when you still want to hear from key contacts.", 0x662846BE),
+        cols.addView(featureCard(R.drawable.ic_bell, 0xFF3F55FF, "Do Not Disturb", "Key calls only",
+                0x8C648CFF, 0x401E3CA0,
+                new String[]{"Chosen contacts can ring through", "Notifications silenced", "Alarms still work"},
+                "Best if you may be needed", 0x662846BE),
                 lin(0, MATCH, 1f, 5, 0, 0, 0));
-        sheet.addView(cols, lin(MATCH, WRAP, 0f, 0, 16, 0, 0));
+        sheet.addView(cols, lin(MATCH, WRAP, 0f, 0, 14, 0, 0));
 
         // Keep music playing
         LinearLayout med = new LinearLayout(this);
         med.setGravity(Gravity.CENTER_VERTICAL);
-        med.setPadding(dp(12), dp(12), dp(12), dp(12));
+        med.setPadding(dp(12), dp(10), dp(12), dp(10));
         med.setBackground(rect(0x40146E6E, 0x8C46D2BE, 1, 16));
-        med.addView(iconCircle(R.drawable.ic_music, 0xFF17A596, 38, 20), new LinearLayout.LayoutParams(dp(38), dp(38)));
+        med.addView(iconCircle(R.drawable.ic_music, 0xFF17A596, 34, 18), new LinearLayout.LayoutParams(dp(34), dp(34)));
         LinearLayout medText = new LinearLayout(this);
         medText.setOrientation(LinearLayout.VERTICAL);
         medText.addView(text("Keep music playing", 15, WHITE, true));
-        medText.addView(text("Switch this on and music or video keeps playing in either mode. "
-                + "Calls, alarms and notifications stay blocked, so you can drift off to meditation music.",
-                11.5f, 0xFFDBE3FF, false));
+        medText.addView(text("Music or video keeps playing in either mode. Everything else stays blocked.",
+                12f, 0xFFDBE3FF, false));
         med.addView(medText, lin(0, WRAP, 1f, 10, 0, 0, 0));
         sheet.addView(med, lin(MATCH, WRAP, 0f, 0, 10, 0, 0));
 
@@ -650,7 +644,7 @@ public class MainActivity extends Activity {
                 new int[]{0xFF6A5CF5, 0xFF4F40DF}));
         ((GradientDrawable) gotIt.getBackground()).setCornerRadius(dp(27));
         gotIt.setOnClickListener(v -> d.dismiss());
-        sheet.addView(gotIt, lin(MATCH, dp(54), 0f, 0, 16, 0, 0));
+        sheet.addView(gotIt, lin(MATCH, dp(54), 0f, 0, 14, 0, 0));
 
         sv.addView(sheet, new FrameLayout.LayoutParams(MATCH, WRAP));
         d.setContentView(sv);
@@ -693,7 +687,7 @@ public class MainActivity extends Activity {
             tp.topMargin = dp(1);
             row.addView(icon(R.drawable.ic_check, 14, MUTED), tp);
             row.addView(text(b, 11.5f, 0xFFDBE3FF, false), lin(0, WRAP, 1f, 8, 0, 0, 0));
-            card.addView(row, lin(MATCH, WRAP, 0f, 0, 0, 0, 8));
+            card.addView(row, lin(MATCH, WRAP, 0f, 0, 0, 0, 6));
         }
 
         View spacer = new View(this);
@@ -701,9 +695,9 @@ public class MainActivity extends Activity {
 
         TextView pill = text(best, 11, 0xFFEEF2FF, false);
         pill.setGravity(Gravity.CENTER);
-        pill.setPadding(dp(8), dp(9), dp(8), dp(9));
+        pill.setPadding(dp(8), dp(7), dp(8), dp(7));
         pill.setBackground(rect(bestFill, 0, 0, 14));
-        card.addView(pill, lin(MATCH, WRAP, 0f, 0, 12, 0, 0));
+        card.addView(pill, lin(MATCH, WRAP, 0f, 0, 8, 0, 0));
         return card;
     }
 
