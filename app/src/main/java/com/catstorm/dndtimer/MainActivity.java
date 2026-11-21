@@ -612,15 +612,15 @@ public class MainActivity extends Activity {
         sheet.addView(titleRow, lin(MATCH, WRAP, 0f, 0, 6, 0, 0));
         LinearLayout cols = new LinearLayout(this);
         cols.setBaselineAligned(false);
-        cols.addView(featureCard(R.drawable.ic_speaker_off, 0xFFD64557, "Silent", "Total silence",
-                0x8CF06478, 0x38962838,
-                new String[]{"No calls or notifications", "No sounds or vibrations", "Alarms muted too"},
-                "Best for sleep", 0x59962838),
-                lin(0, MATCH, 1f, 0, 0, 5, 0));
         cols.addView(featureCard(R.drawable.ic_bell, 0xFF3F55FF, "Do Not Disturb", "Key calls only",
                 0x8C648CFF, 0x401E3CA0,
                 new String[]{"Chosen contacts can ring through", "Notifications silenced", "Alarms still work"},
                 "Best if you may be needed", 0x662846BE),
+                lin(0, MATCH, 1f, 0, 0, 5, 0));
+        cols.addView(featureCard(R.drawable.ic_speaker_off, 0xFFD64557, "Silent", "Total silence",
+                0x8CF06478, 0x38962838,
+                new String[]{"No calls or notifications", "No sounds or vibrations", "Alarms muted too"},
+                "Best for sleep", 0x59962838),
                 lin(0, MATCH, 1f, 5, 0, 0, 0));
         sheet.addView(cols, lin(MATCH, WRAP, 0f, 0, 14, 0, 0));
 
