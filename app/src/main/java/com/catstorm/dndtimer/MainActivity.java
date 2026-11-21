@@ -46,9 +46,19 @@ public class MainActivity extends Activity {
     private static final int PANEL_STROKE = 0x47829AE6;
 
     private static final String[] LABELS = {
-            "1 min", "15 min", "30 min", "45 min", "1 hour", "1 hour 15 min", "1 hour 30 min",
-            "2 hours", "3 hours", "4 hours", "5 hours", "6 hours", "Until I stop"
+            "1min", "15min", "30min", "45min", "1hr", "1hr 15min", "1hr 30min",
+            "2hrs", "3hrs", "4hrs", "5hrs", "6hrs", "Until I stop"
     };
+    private static final String[] START_LABELS = buildStartLabels();
+
+    private static String[] buildStartLabels() {
+        String[] a = new String[97];
+        a[0] = "Now";
+        for (int i = 0; i < 96; i++) {
+            a[i + 1] = pad2(i / 4) + ":" + pad2((i % 4) * 15);
+        }
+        return a;
+    }
     private static final int[] MINUTES = {1, 15, 30, 45, 60, 75, 90, 120, 180, 240, 300, 360, -1};
     private static final int DEFAULT_IDX = 6;
 
@@ -75,7 +85,13 @@ public class MainActivity extends Activity {
     private LinearLayout cardSilent;
     private LinearLayout cardDnd;
     private Switch musicSwitch;
-    private OdometerView wheel;
+    private android.widget.CompoundButton.OnCheckedChangeListener musicListener;
+    private OdometerView durWheel;
+    private OdometerView stWheel;
+    private TextView durCaption;
+    private LinearLayout clockBox;
+    private LinearLayout modeRowView;
+    private int selSt = 0;
     private TextView musicState;
     private LinearLayout musicRow;
     private LinearLayout goBar;
@@ -166,38 +182,43 @@ public class MainActivity extends Activity {
         FrameLayout ringBox = new FrameLayout(this);
         ring = new RingView(this);
         ringBox.addView(ring, new FrameLayout.LayoutParams(MATCH, MATCH));
-        ImageView zz = new ImageView(this);
-        zz.setImageResource(R.drawable.ic_moon_zz);
-        FrameLayout.LayoutParams zl = new FrameLayout.LayoutParams(dp(54), dp(54),
-                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        zl.topMargin = dp(28);
-        ringBox.addView(zz, zl);
+        // Duration drum inside the circle (shown while idle)
+        durCaption = text("DURATION", 10, 0xFF8F9BC9, true);
+        durCaption.setLetterSpacing(0.12f);
+        durCaption.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams dcl = new FrameLayout.LayoutParams(MATCH, WRAP, Gravity.TOP);
+        dcl.topMargin = dp(32);
+        ringBox.addView(durCaption, dcl);
 
+        durWheel = new OdometerView(this, LABELS, selIdx);
+        durWheel.setCornerDp(54);
+        durWheel.setBaseSp(19);
+        durWheel.setListener(index -> {
+            selIdx = index;
+            Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_IDX_V2, index).apply();
+            refresh();
+        });
+        FrameLayout.LayoutParams dwl = new FrameLayout.LayoutParams(dp(150), dp(110),
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        dwl.topMargin = dp(52);
+        ringBox.addView(durWheel, dwl);
+
+        // Countdown (shown while scheduled or running)
         LinearLayout centre = new LinearLayout(this);
         centre.setOrientation(LinearLayout.VERTICAL);
         centre.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        centre.setPadding(0, dp(90), 0, 0);
-        clockView = text("", 21, WHITE, true);
+        centre.setPadding(0, dp(80), 0, 0);
+        clockView = text("", 30, WHITE, true);
         clockView.setGravity(Gravity.CENTER);
+        clockView.setIncludeFontPadding(false);
         ringLabel = text("", 13, MUTED, false);
         ringLabel.setGravity(Gravity.CENTER);
-        clockView.setIncludeFontPadding(false);
-        clockView.setLineSpacing(0f, 1.05f);
-        centre.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(62)));
         ringLabel.setIncludeFontPadding(false);
-        ringLabel.setGravity(Gravity.CENTER);
+        centre.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(40)));
         centre.addView(ringLabel, new LinearLayout.LayoutParams(MATCH, dp(22)));
         ringBox.addView(centre, new FrameLayout.LayoutParams(MATCH, MATCH));
+        clockBox = centre;
         ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(212), dp(212), Gravity.CENTER));
-
-        TextView hand = text("Better\nSleep\nBrighter\nDays", 19, 0xFFAAB6DF, false);
-        hand.setTypeface(Typeface.create("cursive", Typeface.NORMAL));
-        hand.setGravity(Gravity.CENTER);
-        hand.setRotation(-8f);
-        FrameLayout.LayoutParams hl = new FrameLayout.LayoutParams(dp(76), WRAP, Gravity.END | Gravity.TOP);
-        hl.topMargin = dp(66);
-        hl.rightMargin = dp(4);
-        ringCard.addView(hand, hl);
         col.addView(ringCard, lin(MATCH, dp(226), 0f, 0, 10, 0, 0));
 
         // Choose mode
@@ -221,6 +242,7 @@ public class MainActivity extends Activity {
         row.setBaselineAligned(false);
         row.addView(cardSilent, lin(0, MATCH, 1f, 0, 0, 5, 0));
         row.addView(cardDnd, lin(0, MATCH, 1f, 5, 0, 0, 0));
+        modeRowView = row;
         col.addView(row, lin(MATCH, dp(44), 0f, 0, 4, 0, 0));
 
         // Keep music playing
@@ -238,11 +260,12 @@ public class MainActivity extends Activity {
                 new int[][]{{android.R.attr.state_checked}, {}}, new int[]{WHITE, 0xFF8F9BC9}));
         musicSwitch.setTrackTintList(new ColorStateList(
                 new int[][]{{android.R.attr.state_checked}, {}}, new int[]{0xFF25D366, 0xFF27315F}));
-        musicSwitch.setOnCheckedChangeListener((b, on) -> {
+        musicListener = (b, on) -> {
             selMusic = on;
             Dnd.prefs(this).edit().putBoolean(Dnd.KEY_SEL_MUSIC, on).apply();
             refresh();
-        });
+        };
+        musicSwitch.setOnCheckedChangeListener(musicListener);
         musicState = text("OFF", 13, 0xFF8F9BC9, true);
         musicState.setGravity(Gravity.END);
         musicRow.addView(musicState, lin(dp(32), WRAP, 0f, 0, 0, 8, 0));
@@ -255,22 +278,21 @@ public class MainActivity extends Activity {
 
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
-        left.addView(text("Duration", 17, WHITE, true), new LinearLayout.LayoutParams(MATCH, dp(22)));
+        left.addView(text("Start at", 17, WHITE, true), new LinearLayout.LayoutParams(MATCH, dp(22)));
 
-        wheel = new OdometerView(this, LABELS, selIdx);
-        wheel.setListener(index -> {
-            selIdx = index;
-            Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_IDX_V2, index).apply();
+        stWheel = new OdometerView(this, START_LABELS, selSt);
+        stWheel.setListener(index -> {
+            selSt = index;
             refresh();
         });
         FrameLayout wheelBox = new FrameLayout(this);
-        wheelBox.addView(wheel, new FrameLayout.LayoutParams(MATCH, MATCH));
+        wheelBox.addView(stWheel, new FrameLayout.LayoutParams(MATCH, MATCH));
         left.addView(wheelBox, lin(MATCH, dp(156), 0f, 0, 4, 0, 0));
         bottom.addView(left, lin(0, WRAP, 0.9f, 0, 0, 5, 0));
 
         LinearLayout right = new LinearLayout(this);
         right.setOrientation(LinearLayout.VERTICAL);
-        right.addView(text("Start and end", 17, WHITE, true), new LinearLayout.LayoutParams(MATCH, dp(22)));
+        right.addView(text("Schedule", 17, WHITE, true), new LinearLayout.LayoutParams(MATCH, dp(22)));
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(12), 0, dp(12), 0);
@@ -354,8 +376,13 @@ public class MainActivity extends Activity {
 
     // ------------------------------------------------------------------ behaviour
 
+    private boolean locked() {
+        SharedPreferences p = Dnd.prefs(this);
+        return p.getBoolean(Dnd.KEY_ACTIVE, false) || p.getBoolean(Dnd.KEY_SCHED, false);
+    }
+
     private void chooseMode(int mode) {
-        if (Dnd.prefs(this).getBoolean(Dnd.KEY_ACTIVE, false)) {
+        if (locked()) {
             return;
         }
         selMode = mode;
@@ -363,8 +390,22 @@ public class MainActivity extends Activity {
         refresh();
     }
 
+    /** The next time the clock reads the chosen "Start at" time (today if still ahead, otherwise tomorrow). */
+    private static long nextStart(int stIdx, long now) {
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(now);
+        midnight(c);
+        long t = c.getTimeInMillis() + (stIdx - 1) * 15L * 60_000L;
+        if (t <= now) {
+            c.setTimeInMillis(t);
+            c.add(Calendar.DAY_OF_YEAR, 1);
+            t = c.getTimeInMillis();
+        }
+        return t;
+    }
+
     private void toggle() {
-        if (Dnd.prefs(this).getBoolean(Dnd.KEY_ACTIVE, false)) {
+        if (locked()) {
             Dnd.stop(this);
         } else {
             if (Build.VERSION.SDK_INT >= 33
@@ -372,9 +413,10 @@ public class MainActivity extends Activity {
                     != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
             }
-            if (!Dnd.start(this, selMode, MINUTES[selIdx], selMusic)) {
+            long startAt = selSt > 0 ? nextStart(selSt, System.currentTimeMillis()) : 0;
+            if (!Dnd.start(this, selMode, MINUTES[selIdx], selMusic, startAt)) {
                 Toast.makeText(this,
-                        "Switch on “Sleeping Timer” under Do Not Disturb access, then come back and press Start",
+                        "Switch on “KipQuiet” under Do Not Disturb access, then come back and press Start",
                         Toast.LENGTH_LONG).show();
                 startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
             }
@@ -386,23 +428,56 @@ public class MainActivity extends Activity {
         Dnd.expireIfDue(this);
         SharedPreferences p = Dnd.prefs(this);
         boolean active = p.getBoolean(Dnd.KEY_ACTIVE, false);
-        long start = p.getLong(Dnd.KEY_START, 0);
-        long end = p.getLong(Dnd.KEY_END, 0);
+        boolean sched = !active && p.getBoolean(Dnd.KEY_SCHED, false);
+        boolean idle = !active && !sched;
         long now = System.currentTimeMillis();
-        int minutes = MINUTES[selIdx];
+        boolean planned = selSt > 0;
+        long start;
+        long end;
+        int minutes;
         if (active) {
+            start = p.getLong(Dnd.KEY_START, 0);
+            end = p.getLong(Dnd.KEY_END, 0);
+            minutes = end == 0 ? -1 : (int) Math.round((end - start) / 60000.0);
             selMode = p.getInt(Dnd.KEY_MODE, selMode);
+        } else if (sched) {
+            start = p.getLong(Dnd.KEY_SCHED_START, 0);
+            minutes = p.getInt(Dnd.KEY_SCHED_MIN, 60);
+            end = minutes < 0 ? 0 : start + minutes * 60_000L;
+            selMode = p.getInt(Dnd.KEY_SCHED_MODE, selMode);
+        } else {
+            minutes = MINUTES[selIdx];
+            start = planned ? nextStart(selSt, now) : now;
+            end = minutes < 0 ? 0 : start + minutes * 60_000L;
         }
 
-        wheel.setEnabled(!active);
-        wheel.setSelected(selIdx);
-        musicSwitch.setEnabled(!active);
+        // Controls: greyed out and locked once scheduled or running
+        durWheel.setEnabled(idle);
+        durWheel.setSelected(selIdx);
+        durWheel.setVisibility(idle ? View.VISIBLE : View.GONE);
+        durCaption.setVisibility(idle ? View.VISIBLE : View.GONE);
+        clockBox.setVisibility(idle ? View.GONE : View.VISIBLE);
+        stWheel.setEnabled(idle);
+        stWheel.setSelected(selSt);
+        stWheel.setAlpha(idle ? 1f : 0.4f);
+        modeRowView.setAlpha(idle ? 1f : 0.4f);
+        musicRow.setAlpha(idle ? 1f : 0.4f);
+        musicSwitch.setEnabled(idle);
+        cardSilent.setEnabled(idle);
+        cardDnd.setEnabled(idle);
+        if (sched) {
+            selMusic = p.getBoolean(Dnd.KEY_SCHED_MUSIC, selMusic);
+        } else if (active) {
+            selMusic = p.getBoolean("music", selMusic);
+        }
         musicState.setText(selMusic ? "ON" : "OFF");
         musicState.setTextColor(selMusic ? 0xFF5DFF9A : 0xFF8F9BC9);
         musicRow.setBackground(selMusic ? rect(0x2925D366, 0xBF25D366, 1, 16)
                 : rect(0x80101A46, 0x4D829AE6, 1, 16));
         if (musicSwitch.isChecked() != selMusic) {
+            musicSwitch.setOnCheckedChangeListener(null);
             musicSwitch.setChecked(selMusic);
+            musicSwitch.setOnCheckedChangeListener(musicListener);
         }
         styleCards(selMode);
 
@@ -412,6 +487,11 @@ public class MainActivity extends Activity {
             bannerIcon.setColorFilter(0xFF9EC3FF);
             bannerTitle.setTextColor(WHITE);
             bannerTitle.setText("Sleep Timer Active");
+        } else if (sched) {
+            banner.setBackground(rect(0x66785000, 0xCCFFBE50, 2, 16));
+            bannerIcon.setColorFilter(0xFFFFD27A);
+            bannerTitle.setTextColor(0xFFFFE0A0);
+            bannerTitle.setText("Sleep Timer Scheduled");
         } else {
             banner.setBackground(rect(0x59126440, 0xBF3DDC84, 2, 16));
             bannerIcon.setColorFilter(0xFF6DF0A4);
@@ -420,60 +500,49 @@ public class MainActivity extends Activity {
         }
 
         // Ring
-        String clock;
-        float clockSp = 30f;
         float frac = 0f;
-        String caption = "";
         if (active) {
             if (end == 0) {
-                clock = "∞";
+                clockView.setText("∞");
                 frac = 1f;
-                caption = "no automatic end";
+                ringLabel.setText("no automatic end");
             } else {
                 long left = Math.max(0, end - now);
-                clock = clockStr(left);
+                clockView.setText(clockStr(left));
                 frac = (float) left / (float) Math.max(1, end - start);
-                caption = "of " + shortDur((int) Math.round((end - start) / 60000.0));
+                ringLabel.setText("of " + shortDur(minutes));
             }
-        } else {
-            if (minutes < 0) {
-                clock = "∞";
-            } else {
-                clock = durWords(minutes);
-                clockSp = 21f;
-            }
+        } else if (sched) {
+            clockView.setText(clockStr(Math.max(0, start - now)));
+            ringLabel.setText("until it starts");
         }
-        clockView.setText(clock);
-        clockView.setTextSize(clockSp);
-        clockView.setGravity(Gravity.CENTER);
-        ringLabel.setText(caption);
         ring.setFraction(frac);
 
         // Start / End bar
         GradientDrawable g;
-        if (active) {
-            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFE32D40, 0xFFA30F22});
-            goIcon.setImageResource(R.drawable.ic_stop);
-            goText.setText("END SLEEP TIMER");
-        } else {
+        if (idle) {
             g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF26BD65, 0xFF0E7D3D});
             goIcon.setImageResource(R.drawable.ic_play);
-            goText.setText("START SLEEP TIMER");
+            goText.setText(planned ? "SCHEDULE SLEEP TIMER" : "START SLEEP TIMER");
+        } else {
+            g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFE32D40, 0xFFA30F22});
+            goIcon.setImageResource(R.drawable.ic_stop);
+            goText.setText(active ? "END SLEEP TIMER" : "CANCEL SCHEDULED START");
         }
         g.setStroke(dp(1), 0x40FFFFFF);
         g.setCornerRadius(dp(27));
         goBar.setBackground(g);
 
-        // Start and end times
-        long shownEnd = active ? end : (minutes < 0 ? 0 : now + minutes * 60_000L);
-        startLabel.setText(active ? "Started at" : "Will start");
-        startVal.setText(active ? hhmm(start) : "Now");
-        String sd = active ? dayStr(start, now) : "";
+        // Schedule box
+        boolean showStart = active || sched || planned;
+        startLabel.setText(active ? "Started at" : (sched || planned ? "Starts at" : "Will start"));
+        startVal.setText(showStart ? hhmm(start) : "Now");
+        String sd = showStart ? dayStr(start, now) : "";
         startDay.setText(sd);
         startDay.setVisibility(sd.isEmpty() ? View.GONE : View.VISIBLE);
         endLabel.setText(active ? "Ends at" : "Will end at");
-        endVal.setText(shownEnd == 0 ? "--:--" : hhmm(shownEnd));
-        endDay.setText(shownEnd == 0 ? "no end time" : dayStr(shownEnd, now));
+        endVal.setText(end == 0 ? "--:--" : hhmm(end));
+        endDay.setText(end == 0 ? "no end time" : dayStr(end, now));
     }
 
     // ------------------------------------------------------------------ pop-up
@@ -683,9 +752,9 @@ public class MainActivity extends Activity {
         int h = m / 60;
         int r = m % 60;
         if (h > 0 && r > 0) {
-            return h + " hr " + r + " min";
+            return h + "hr " + r + "min";
         }
-        return h > 0 ? h + " hr" : r + " min";
+        return h > 0 ? h + "hr" : r + "min";
     }
 
     private static String hhmm(long t) {

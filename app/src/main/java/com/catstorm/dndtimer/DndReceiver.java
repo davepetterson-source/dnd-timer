@@ -9,6 +9,8 @@ public class DndReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
             Dnd.onBoot(context);
+        } else if (Dnd.ACTION_BEGIN.equals(intent.getAction())) {
+            Dnd.beginScheduled(context);
         } else if (Dnd.ACTION_END.equals(intent.getAction())) {
             Dnd.stop(context);
         }

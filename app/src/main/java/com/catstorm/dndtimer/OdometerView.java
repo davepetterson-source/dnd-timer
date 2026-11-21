@@ -31,6 +31,8 @@ class OdometerView extends View {
     private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
 
+    private float cornerDp = 14f;
+    private float baseSp = 21f;
     private float pos;
     private int selected;
     private Listener listener;
@@ -52,6 +54,16 @@ class OdometerView extends View {
         text.setTypeface(Typeface.DEFAULT_BOLD);
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeWidth(density);
+    }
+
+    void setCornerDp(float dp) {
+        cornerDp = dp;
+        invalidate();
+    }
+
+    void setBaseSp(float sp) {
+        baseSp = sp;
+        invalidate();
     }
 
     void setListener(Listener l) {
@@ -136,7 +148,7 @@ class OdometerView extends View {
                 if (dragging) {
                     vt.computeCurrentVelocity(1000);
                     float rowsPerSec = -vt.getYVelocity() / rowPx;
-                    choose(Math.round(pos + rowsPerSec * 0.18f));
+                    choose(Math.round(pos + rowsPerSec * 0.3f));
                 } else if (e.getActionMasked() == MotionEvent.ACTION_UP) {
                     choose(selected + Math.round((e.getY() - getHeight() / 2f) / rowPx));
                 }
@@ -162,7 +174,7 @@ class OdometerView extends View {
                 new int[]{0xFF070C24, 0xFF111B48, 0xFF111B48, 0xFF070C24},
                 new float[]{0f, 0.16f, 0.84f, 1f}, Shader.TileMode.CLAMP));
         rect.set(0, 0, w, h);
-        canvas.drawRoundRect(rect, 14 * density, 14 * density, fill);
+        canvas.drawRoundRect(rect, cornerDp * density, cornerDp * density, fill);
         fill.setShader(null);
 
         // lit window
@@ -184,7 +196,7 @@ class OdometerView extends View {
             float cos = (float) Math.cos(rad);
             float y = cy + radiusPx * (float) Math.sin(rad);
             float ad = Math.min(Math.abs(d), 2f);
-            text.setTextSize((21f - ad * 2.5f) * density);
+            text.setTextSize((baseSp - ad * 2.5f) * density);
             text.setColor(Math.abs(d) < 0.5f ? 0xFFFFFFFF : 0xFFAAB6E0);
             text.setAlpha((int) (255 * Math.pow(Math.max(0f, cos), 1.3)));
             canvas.save();
@@ -204,6 +216,6 @@ class OdometerView extends View {
 
         line.setColor(0x59829AE6);
         rect.set(density / 2, density / 2, w - density / 2, h - density / 2);
-        canvas.drawRoundRect(rect, 14 * density, 14 * density, line);
+        canvas.drawRoundRect(rect, cornerDp * density, cornerDp * density, line);
     }
 }
