@@ -334,7 +334,7 @@ final class Dnd {
         String endText = end == 0 ? "until you end it" : "ends " + f.format(new Date(end));
         String title = scheduled ? "Sleep Timer scheduled" : "Sleep Timer active";
         String body = scheduled
-                ? "Starts " + f.format(new Date(start)) + " · " + what + " · " + endText
+                ? what + "\nStarts " + f.format(new Date(start)) + " · " + endText
                 : what + "\n" + f.format(new Date(start)) + (end == 0 ? " · until you end it" : " to " + f.format(new Date(end)));
 
         PendingIntent open = PendingIntent.getActivity(c, 2, new Intent(c, MainActivity.class)
