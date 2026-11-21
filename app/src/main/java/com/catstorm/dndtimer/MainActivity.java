@@ -46,7 +46,7 @@ public class MainActivity extends Activity {
     private static final int PANEL_STROKE = 0x47829AE6;
 
     private static final String[] LABELS = {
-            "1min", "15min", "30min", "45min", "1hr", "1hr 15min", "1hr 30min",
+            "1min", "5min", "10min", "15min", "30min", "45min", "1hr", "1hr 15min", "1hr 30min",
             "2hrs", "3hrs", "4hrs", "5hrs", "6hrs", "Until I stop"
     };
     private static final String[] START_LABELS = buildStartLabels();
@@ -59,8 +59,8 @@ public class MainActivity extends Activity {
         }
         return a;
     }
-    private static final int[] MINUTES = {1, 15, 30, 45, 60, 75, 90, 120, 180, 240, 300, 360, -1};
-    private static final int DEFAULT_IDX = 6;
+    private static final int[] MINUTES = {1, 5, 10, 15, 30, 45, 60, 75, 90, 120, 180, 240, 300, 360, -1};
+    private static final int DEFAULT_IDX = 8;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable tick = new Runnable() {

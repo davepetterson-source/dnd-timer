@@ -37,7 +37,7 @@ final class Dnd {
     static final String KEY_MODE = "mode";
     static final String KEY_SEL_MODE = "selMode2";
     static final String KEY_SEL_IDX = "selIdx";
-    static final String KEY_SEL_IDX_V2 = "selIdx2";
+    static final String KEY_SEL_IDX_V2 = "selIdx3";
     static final String KEY_SEL_MUSIC = "selMusic";
     private static final String KEY_POLICY_CHANGED = "ppc";
     private static final String KEY_MUSIC = "music";
