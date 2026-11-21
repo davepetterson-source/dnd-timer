@@ -140,14 +140,21 @@ final class Dnd {
             e.putInt(KEY_PREV_CONV, Build.VERSION.SDK_INT >= 30 ? pol.priorityConversationSenders : 0);
         }
 
-        boolean changePolicy = music;
+        boolean changePolicy = music || mode == DND;
         if (changePolicy) {
             int cats = NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
             int calls = NotificationManager.Policy.PRIORITY_SENDERS_ANY;
             int msgs = NotificationManager.Policy.PRIORITY_SENDERS_ANY;
             int conv = 2; /* CONVERSATION_SENDERS_NONE */
             if (mode == DND) {
-                cats = pol.priorityCategories | NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
+                int base = pol.priorityCategories;
+                if (music) {
+                    cats = base | NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
+                } else {
+                    // No music: also mute media and touch/system sounds (e.g. chat "sent" pops)
+                    cats = base & ~(NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA
+                            | NotificationManager.Policy.PRIORITY_CATEGORY_SYSTEM);
+                }
                 calls = pol.priorityCallSenders;
                 msgs = pol.priorityMessageSenders;
                 conv = Build.VERSION.SDK_INT >= 30 ? pol.priorityConversationSenders : 0;
@@ -330,12 +337,12 @@ final class Dnd {
         }
 
         SimpleDateFormat f = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        String what = (mode == SILENT ? "Silent" : "Do Not Disturb") + (music ? " + music" : "");
+        String what = (mode == SILENT ? "Silent" : "Do Not Disturb") + (music ? " + Music" : "");
         String endText = end == 0 ? "until you end it" : "ends " + f.format(new Date(end));
         String title = scheduled ? "Sleep Timer scheduled" : "Sleep Timer active";
         String body = scheduled
                 ? "Starts " + f.format(new Date(start)) + " · " + what + " · " + endText
-                : what + " · " + f.format(new Date(start)) + (end == 0 ? " · until you end it" : " to " + f.format(new Date(end)));
+                : what + "\n" + f.format(new Date(start)) + (end == 0 ? " · until you end it" : " to " + f.format(new Date(end)));
 
         PendingIntent open = PendingIntent.getActivity(c, 2, new Intent(c, MainActivity.class)
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP),
