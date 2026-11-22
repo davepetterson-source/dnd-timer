@@ -4,3 +4,6 @@ app/build/
 local.properties
 *.iml
 .idea/
+design-preview/preview.html
+design-preview/preview.png
+design-preview/__pycache__/
