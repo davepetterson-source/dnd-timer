@@ -1589,11 +1589,26 @@ const STACK = {
     pSleep: { top: 49, left: 58 },
 };
 function CountReel({value,limit}) {
- const [offset,setOffset]=react_1.useState(0);
+ const [f,setF]=react_1.useState(0);
  const prev=react_1.useRef(value);
- react_1.useLayoutEffect(()=>{if(prev.current===value)return;prev.current=value;setOffset(-32);let a=0,b=0;a=requestAnimationFrame(()=>{b=requestAnimationFrame(()=>setOffset(0));});return ()=>{cancelAnimationFrame(a);cancelAnimationFrame(b);};},[value]);
+ const raf=react_1.useRef(0);
+ react_1.useLayoutEffect(()=>{
+  if(prev.current===value)return;
+  const steps=Math.max(1,Math.min(2,Math.abs(value-prev.current)));
+  prev.current=value;
+  cancelAnimationFrame(raf.current);
+  setF(1);
+  const t0=performance.now(),ms=300;
+  const run=t=>{const x=Math.min(1,(t-t0)/ms);setF(1-(1-Math.pow(1-x,2.2)));if(x<1)raf.current=requestAnimationFrame(run);};
+  raf.current=requestAnimationFrame(run);
+ },[value]);
+ react_1.useEffect(()=>()=>cancelAnimationFrame(raf.current),[]);
  const wrap=n=>limit?((n%limit)+limit)%limit:Math.max(0,n);
- return React.createElement("div",{className:"kq-reel","aria-hidden":true},React.createElement("div",{className:"kq-count-track",style:{transform:`translateY(${offset}px)`,transition:offset===0?"transform 280ms ease-out":"none"}},[-1,0,1,2].map(d=>React.createElement("span",{key:d,className:"kq-count-row",style:{transform:`translateY(${d*32}px) perspective(300px) rotateX(${d===0?0:d*24}deg)`,opacity:d===0?1:.38,fontSize:d===0?(wrap(value+d)>=100?23:29):19}},String(wrap(value+d)).padStart(2,"0")))));
+ return React.createElement("div",{className:"kq-reel","aria-hidden":true},React.createElement("div",{className:"kq-count-track"},[-2,-1,0,1,2].map(k=>{
+  const pos=k-f,dist=Math.min(1,Math.abs(pos)),n=wrap(value+k);
+  const big=n>=100?23:29;
+  return React.createElement("span",{key:k,className:"kq-count-row",style:{transform:`translateY(${pos*32}px) perspective(300px) rotateX(${Math.max(-48,Math.min(48,pos*24))}deg)`,opacity:1-.62*dist,fontSize:big-(big-19)*dist}},String(n).padStart(2,"0"));
+ })));
 }
 function CountdownReels({time,scheduled}) {
  const parts=time.split(":").map(Number);
