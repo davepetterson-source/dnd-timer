@@ -1591,7 +1591,7 @@ const STACK = {
 function CountReel({value,limit}) {
  const [offset,setOffset]=react_1.useState(0);
  const prev=react_1.useRef(value);
- react_1.useEffect(()=>{if(prev.current===value)return;prev.current=value;setOffset(-32);let a=0,b=0;a=requestAnimationFrame(()=>{b=requestAnimationFrame(()=>setOffset(0));});return ()=>{cancelAnimationFrame(a);cancelAnimationFrame(b);};},[value]);
+ react_1.useLayoutEffect(()=>{if(prev.current===value)return;prev.current=value;setOffset(-32);let a=0,b=0;a=requestAnimationFrame(()=>{b=requestAnimationFrame(()=>setOffset(0));});return ()=>{cancelAnimationFrame(a);cancelAnimationFrame(b);};},[value]);
  const wrap=n=>limit?((n%limit)+limit)%limit:Math.max(0,n);
  return React.createElement("div",{className:"kq-reel","aria-hidden":true},React.createElement("div",{className:"kq-count-track",style:{transform:`translateY(${offset}px)`,transition:offset===0?"transform 280ms ease-out":"none"}},[-1,0,1,2].map(d=>React.createElement("span",{key:d,className:"kq-count-row",style:{transform:`translateY(${d*32}px) perspective(300px) rotateX(${d===0?0:d*24}deg)`,opacity:d===0?1:.38,fontSize:d===0?(wrap(value+d)>=100?23:29):19}},String(wrap(value+d)).padStart(2,"0")))));
 }
