@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
 
     private static final String[] LABELS = {
             "1min", "5min", "10min", "15min", "30min", "45min", "1hr", "1hr 15min", "1hr 30min",
-            "2hrs", "3hrs", "4hrs", "5hrs", "6hrs", "Until I stop"
+            "2hrs", "3hrs", "4hrs", "5hrs", "6hrs", "7hrs", "8hrs", "Until I stop"
     };
     private static final String[] START_LABELS = buildStartLabels();
 
@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
         }
         return a;
     }
-    private static final int[] MINUTES = {1, 5, 10, 15, 30, 45, 60, 75, 90, 120, 180, 240, 300, 360, -1};
+    private static final int[] MINUTES = {1, 5, 10, 15, 30, 45, 60, 75, 90, 120, 180, 240, 300, 360, 420, 480, -1};
     private static final int DEFAULT_IDX = 8;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -76,44 +76,57 @@ public class MainActivity extends Activity {
     private int selIdx;
     private boolean selMusic;
 
-    private LinearLayout banner;
-    private ImageView bannerIcon;
-    private TextView bannerTitle;
+    private static final float CX = 195f;
+    private static final float CY = 174f;
+
+    private FrameLayout rootView;
+    private FrameLayout stage;
     private RingView ring;
     private TextView clockView;
     private TextView ringLabel;
-    private LinearLayout cardSilent;
-    private LinearLayout cardDnd;
-    private Switch musicSwitch;
-    private android.widget.CompoundButton.OnCheckedChangeListener musicListener;
+    private TextView durCaption;
     private OdometerView durWheel;
     private OdometerView stWheel;
-    private TextView durCaption;
-    private LinearLayout clockBox;
-    private LinearLayout modeRowView;
-    private LinearLayout repPill;
-    private TextView repPillText;
-    private ImageView leftTitleIcon;
+    private FrameLayout stWheelBox;
     private TextView leftTitle;
     private TextView rightTitle;
-    private LinearLayout startedBox;
-    private LinearLayout endBox;
-    private FrameLayout wheelBox;
-    private TextView[] zeds;
-    private android.animation.ObjectAnimator[] zedAnims;
-    private boolean zedsRunning = false;
-    private int[] zedBaseX;
-    private int selDays = 0;
-    private int selSt = 0;
-    private TextView musicState;
-    private LinearLayout musicRow;
-    private LinearLayout goBar;
-    private ImageView goIcon;
-    private TextView goText;
     private TextView startVal;
     private TextView startDay;
     private TextView endVal;
     private TextView endDay;
+    private TextView clockCaptionBox;
+    private LinearLayout clockBox;
+    private LinearLayout cardDnd;
+    private LinearLayout cardSilent;
+    private LinearLayout goBar;
+    private ImageView goIcon;
+    private TextView goText;
+    private TileView[] tiles = new TileView[4];
+    private TextView[] zeds;
+    private android.animation.ObjectAnimator[] zedAnims;
+    private boolean zedsRunning = false;
+    private int[] zedBaseX = {0, 0, 0};
+    private int selDays = 0;
+    private int selSt = 0;
+
+    // Settings page
+    private ScrollView settingsView;
+    private LinearLayout presetList;
+    private LinearLayout chipRow;
+    private TextView repHint;
+    private TextView[] setChips = new TextView[7];
+    private Switch setMusic;
+    private android.widget.CompoundButton.OnCheckedChangeListener setMusicListener;
+    private TextView defDnd;
+    private TextView defSilent;
+    private TextView aboutSub;
+
+    private static final String[] PRESET_NAMES = {"Meditation", "Kip", "Sleep"};
+    private static final int[] PRESET_DEF_MIN = {15, 60, 480};
+    private static final int[] PRESET_DEF_MODE = {Dnd.SILENT, Dnd.DND, Dnd.SILENT};
+    private static final boolean[] PRESET_DEF_MUSIC = {true, false, false};
+    private static final String[] PRESET_EMOJI = {"🧘", "🛏️", "😴"};
+    private static final int[] PRESET_COL = {0x887B3FE0, 0x883A8DFF, 0x884A6DE0};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,7 +136,7 @@ public class MainActivity extends Activity {
 
         nm = getSystemService(NotificationManager.class);
         SharedPreferences p = Dnd.prefs(this);
-        selMode = p.getInt(Dnd.KEY_SEL_MODE, Dnd.DND) == Dnd.SILENT ? Dnd.SILENT : Dnd.DND;
+        selMode = p.getInt(Dnd.KEY_SEL_MODE, p.getInt("defMode", Dnd.DND)) == Dnd.SILENT ? Dnd.SILENT : Dnd.DND;
         selIdx = Math.max(0, Math.min(LABELS.length - 1, p.getInt(Dnd.KEY_SEL_IDX_V2, DEFAULT_IDX)));
         selMusic = p.getBoolean(Dnd.KEY_SEL_MUSIC, false);
         selDays = p.getInt(Dnd.KEY_REP_MASK, 0);
@@ -149,281 +162,298 @@ public class MainActivity extends Activity {
 
     // ------------------------------------------------------------------ UI
 
-    private View buildUi() {
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(0xFF090F2C);
+    private static int argb(float a, int r, int g, int b) {
+        return (Math.round(a * 255) << 24) | (r << 16) | (g << 8) | b;
+    }
 
-        // Moonlit lake picture, scaled to the screen width, fading to the background colour
-        float k = getResources().getDisplayMetrics().widthPixels
-                / (390f * getResources().getDisplayMetrics().density);
+    private TextView lab(String s, float dip, int color, boolean bold, int gravity) {
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, dip);
+        t.setTextColor(color);
+        t.setIncludeFontPadding(false);
+        t.setGravity(gravity);
+        if (bold) {
+            t.setTypeface(Typeface.DEFAULT_BOLD);
+        }
+        return t;
+    }
+
+    private void put(FrameLayout p, View v, float x, float y, float w, float h) {
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w < 0 ? WRAP : dp(w), h < 0 ? WRAP : dp(h));
+        lp.leftMargin = dp(x);
+        lp.topMargin = dp(y);
+        p.addView(v, lp);
+    }
+
+    private ImageView ico(int res, float size, int tint) {
+        ImageView v = new ImageView(this);
+        v.setImageResource(res);
+        if (tint != 0) {
+            v.setColorFilter(tint);
+        }
+        return v;
+    }
+
+    private TextView[] tileDur = new TextView[3];
+    private ImageView[][] tileStatus = new ImageView[3][3];
+
+    private View buildUi() {
+        rootView = new FrameLayout(this);
+        rootView.setBackgroundColor(0xFF090F2C);
+        stage = new FrameLayout(this);
+        stage.setBackgroundColor(0xFF090F2C);
+
+        // Moonlit lake, fading into the background colour
         FrameLayout bgWrap = new FrameLayout(this);
-        bgWrap.setClipChildren(true);
         ImageView bg = new ImageView(this);
         bg.setImageResource(R.drawable.bg_moon);
         bg.setScaleType(ImageView.ScaleType.FIT_XY);
-        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(dp(567 * k), dp(850 * k));
-        bp.leftMargin = -dp(127 * k);
-        bp.topMargin = -dp(348 * k);
-        bgWrap.addView(bg, bp);
+        put(bgWrap, bg, -127, -348, 567, 850);
         View overlay = new View(this);
         overlay.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0x1A090F2C, 0x66090F2C, 0xD9090F2C, 0xFF090F2C}));
-        bgWrap.addView(overlay, new FrameLayout.LayoutParams(MATCH, MATCH));
-        root.addView(bgWrap, new FrameLayout.LayoutParams(MATCH, dp(520 * k), Gravity.TOP));
+        put(bgWrap, overlay, 0, 0, 390, 520);
+        put(stage, bgWrap, 0, 0, 390, 520);
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.setVerticalScrollBarEnabled(false);
-        scroll.setFillViewport(true);
-        LinearLayout col = new LinearLayout(this);
-        col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(dp(16), dp(8), dp(16), dp(12));
-        scroll.addView(col, new FrameLayout.LayoutParams(MATCH, WRAP));
-        root.addView(scroll, new FrameLayout.LayoutParams(MATCH, MATCH));
+        // ---- corner tiles
+        int[][][] tf = {
+                {{argb(.92f, 178, 110, 255), argb(.72f, 128, 62, 228), argb(.55f, 84, 36, 180)},
+                        {0xFFE6CAFF, 0xFFA874FF, 0xFF7A46E8}},
+                {{argb(.85f, 110, 190, 255), argb(.65f, 58, 128, 240), argb(.5f, 34, 78, 200)},
+                        {0xFFD4ECFF, 0xFF78B8FF, 0xFF3F7FF0}},
+                {{argb(.62f, 56, 70, 170), argb(.5f, 40, 52, 140), argb(.42f, 30, 38, 110)},
+                        {0xFFA9B8FF, 0xFF6C84F0, 0xFF4B62D8}},
+                {{argb(.65f, 60, 84, 200), argb(.52f, 44, 60, 160), argb(.42f, 32, 40, 120)},
+                        {0xFFB4C4FF, 0xFF7590FF, 0xFF4D66E0}}};
+        int[] glows = {argb(.75f, 170, 100, 255), argb(.7f, 80, 160, 255), argb(.5f, 90, 120, 255), argb(.55f, 90, 130, 255)};
+        float[][] geo = {   // x0, y0, w, h, ccx(content centre x)
+                {9, 10, 89, 127, 38}, {292, 10, 89, 127, 45}, {9, 200, 98, 132, 33}, {283, 200, 98, 132, 52}};
+        for (int i = 0; i < 4; i++) {
+            final int idx = i;
+            boolean flipX = i == 1 || i == 3;
+            boolean flipY = i >= 2;
+            float x0 = geo[i][0], y0 = geo[i][1], w = geo[i][2], h = geo[i][3], ccx = geo[i][4];
+            float ya = 28f, xb = i < 2 ? 43f : 40f;
+            TileView t = new TileView(this, w, h, flipX, flipY, ya, xb, CX - x0, CY - y0, 137f,
+                    tf[i][0], tf[i][1], glows[i]);
+            tiles[i] = t;
+            float top0 = i < 2 ? 30 : 45;
+            float[] rows = i < 2 ? new float[]{30, 60, 79, 98} : new float[]{45, 72, 90, 111};
+            int iconRes = i == 0 ? R.drawable.ic_med : i == 1 ? R.drawable.ic_bed : i == 2 ? R.drawable.ic_gear : R.drawable.ic_face;
+            int tint = i == 0 ? 0xFFF3DCFF : i == 1 ? 0xFF8FD3FF : i == 2 ? 0xFFFFFFFF : 0;
+            float isz = i == 0 ? 34 : i == 1 ? 38 : i == 2 ? 32 : 34;
+            ImageView ic = ico(iconRes, isz, tint);
+            ic.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            t.place(ic, ccx - isz / 2f, rows[0] - isz / 2f, isz, isz);
+            String nm = i == 2 ? "Setup" : PRESET_NAMES[i < 2 ? i : 2];
+            TextView name = lab(nm, 13, WHITE, true, Gravity.CENTER);
+            t.place(name, ccx - 45, rows[1] - 8, 90, 16);
+            if (i == 2) {
+                String[] sub = {"Presets", "Repeat", "& more"};
+                for (int j = 0; j < 3; j++) {
+                    t.place(lab(sub[j], 11, 0xFFD6DEFA, false, Gravity.CENTER), ccx - 40, 84 + 13 * j + 0f, 80, 13);
+                }
+            } else {
+                int p = i < 2 ? i : 2;
+                tileDur[p] = lab("", 11, 0xFFE2E8FF, false, Gravity.CENTER);
+                t.place(tileDur[p], ccx - 40, rows[2] - 6, 80, 13);
+                LinearLayout st = new LinearLayout(this);
+                st.setGravity(Gravity.CENTER);
+                int[] res = {R.drawable.ic_speaker_off, R.drawable.ic_bell, R.drawable.ic_music};
+                for (int j = 0; j < 3; j++) {
+                    ImageView s = ico(res[j], 14, 0xFFEEF0FF);
+                    tileStatus[p][j] = s;
+                    st.addView(s, lin(dp(14), dp(14), 0f, j == 0 ? 0 : 5, 0, 0, 0));
+                }
+                t.place(st, ccx - 40, rows[3] - 8, 80, 16);
+                t.setOnClickListener(v -> applyPreset(p));
+            }
+            if (i == 2) {
+                t.setOnClickListener(v -> showSettings());
+            }
+            put(stage, t, x0 - TileView.PAD, y0 - TileView.PAD, w + 2 * TileView.PAD, h + 2 * TileView.PAD);
+        }
+        // the sleep tile is the fourth one
+        tiles[3].setOnClickListener(v -> applyPreset(2));
 
-        // Status banner
-        banner = new LinearLayout(this);
-        banner.setGravity(Gravity.CENTER_VERTICAL);
-        banner.setPadding(dp(12), dp(6), dp(12), dp(6));
-        bannerIcon = icon(R.drawable.ic_moon, 34, 0xFF9EC3FF);
-        bannerTitle = text("", 17, WHITE, true);
-        bannerTitle.setSingleLine(true);
-        banner.addView(bannerIcon, new LinearLayout.LayoutParams(dp(34), dp(34)));
-        banner.addView(bannerTitle, lin(WRAP, WRAP, 0f, 10, 0, 0, 0));
-        col.addView(banner, lin(dp(268), dp(48), 0f, 0, 0, 0, 0));
-
-        // Ring card
-        FrameLayout ringCard = new FrameLayout(this);
-        ringCard.setBackground(rect(PANEL_FILL, PANEL_STROKE, 1, 22));
-        FrameLayout ringBox = new FrameLayout(this);
+        // ---- timer circle
         ring = new RingView(this);
-        ringBox.addView(ring, new FrameLayout.LayoutParams(MATCH, MATCH));
-        // Duration drum inside the circle (shown while idle)
-        durCaption = text("DURATION", 10, 0xFF8F9BC9, true);
-        durCaption.setLetterSpacing(0.12f);
-        durCaption.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams dcl = new FrameLayout.LayoutParams(MATCH, WRAP, Gravity.TOP);
-        dcl.topMargin = dp(28);
-        ringBox.addView(durCaption, dcl);
+        put(stage, ring, CX - 132, CY - 132, 264, 264);
+
+        durCaption = lab("DURATION", 12, 0xFFCDD5F5, true, Gravity.CENTER);
+        durCaption.setLetterSpacing(0.1f);
+        put(stage, durCaption, CX - 80, 80, 160, 14);
 
         durWheel = new OdometerView(this, LABELS, selIdx);
-        durWheel.setCornerDp(60);
-        durWheel.setBaseSp(31);
-        durWheel.setPitchDp(38);
-        durWheel.setFitDp(156);
-        durWheel.setWindowHalfDp(20);
+        durWheel.setPlain(11f, 14f, new int[]{0xFF4A3FD0, 0xFF2F289A}, new float[]{0f, 1f}, false, 0x8C968CFF, 0xFF9FABD8);
+        durWheel.setBaseSp(27);
+        durWheel.setPitchDp(44);
+        durWheel.setFitDp(170);
+        durWheel.setWindowHalfDp(23);
         durWheel.setListener(index -> {
             selIdx = index;
             Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_IDX_V2, index).apply();
             refresh();
         });
-        FrameLayout.LayoutParams dwl = new FrameLayout.LayoutParams(dp(176), dp(122),
-                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        dwl.topMargin = dp(48);
-        ringBox.addView(durWheel, dwl);
+        put(stage, durWheel, CX - 100, CY - 72, 200, 148);
 
-        // Countdown (shown while scheduled or running)
-        LinearLayout centre = new LinearLayout(this);
-        centre.setOrientation(LinearLayout.VERTICAL);
-        centre.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        centre.setPadding(0, dp(80), 0, 0);
-        clockView = text("", 30, WHITE, true);
-        clockView.setGravity(Gravity.CENTER);
-        clockView.setIncludeFontPadding(false);
-        ringLabel = text("", 13, MUTED, false);
-        ringLabel.setGravity(Gravity.CENTER);
-        ringLabel.setIncludeFontPadding(false);
-        centre.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(40)));
-        centre.addView(ringLabel, new LinearLayout.LayoutParams(MATCH, dp(22)));
-        ringBox.addView(centre, new FrameLayout.LayoutParams(MATCH, MATCH));
-        clockBox = centre;
-        ringCard.addView(ringBox, new FrameLayout.LayoutParams(dp(212), dp(212), Gravity.CENTER));
+        clockBox = new LinearLayout(this);
+        clockBox.setOrientation(LinearLayout.VERTICAL);
+        clockBox.setGravity(Gravity.CENTER_HORIZONTAL);
+        clockView = lab("", 40, WHITE, true, Gravity.CENTER);
+        clockView.setLetterSpacing(0.012f);
+        ringLabel = lab("", 15, 0xFFC4CDF0, false, Gravity.CENTER);
+        clockBox.addView(clockView, new LinearLayout.LayoutParams(MATCH, dp(40)));
+        clockBox.addView(ringLabel, lin(MATCH, dp(20), 0f, 0, 2, 0, 0));
+        put(stage, clockBox, CX - 100, CY - 30, 200, 64);
+
+        // sleeping zeds
         zeds = new TextView[3];
         zedAnims = new android.animation.ObjectAnimator[3];
-        int[] zx = {104, 118, 132};
-        int[] zy = {64, 46, 24};
-        float[] zs = {16, 22, 28};
+        float[][] zp = {{0, 40, 14}, {12, 24, 19}, {26, 4, 24}};
         for (int i = 0; i < 3; i++) {
-            TextView z = text(i == 0 ? "z" : "Z", zs[i], 0xFFCFD8FF, true);
+            TextView z = lab(i == 0 ? "z" : "Z", zp[i][2], 0xFFCFD8FF, true, Gravity.CENTER);
             z.setTypeface(Typeface.create(Typeface.DEFAULT_BOLD, Typeface.ITALIC));
             z.setShadowLayer(dp(5), 0, 0, 0xCC8CA0FF);
             z.setAlpha(0f);
             z.setVisibility(View.GONE);
-            FrameLayout.LayoutParams zp = new FrameLayout.LayoutParams(WRAP, WRAP,
-                    Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-            zp.topMargin = dp(zy[i] + 8);
-            ringCard.addView(z, zp);
-            z.setTranslationX(dp(zx[i]));
+            put(stage, z, CX + 40 + zp[i][0], CY - 104 + zp[i][1], 30, 30);
             zeds[i] = z;
         }
-        zedBaseX = zx;
-        col.addView(ringCard, lin(MATCH, dp(218), 0f, 0, 10, 0, 0));
 
-        // Start at / Ends at cards
-        LinearLayout bottom = new LinearLayout(this);
-        bottom.setBaselineAligned(false);
-
-        LinearLayout leftCol = new LinearLayout(this);
-        leftCol.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout leftCard = new LinearLayout(this);
-        leftCard.setOrientation(LinearLayout.VERTICAL);
-        leftCard.setPadding(dp(6), dp(4), dp(6), dp(6));
-        leftCard.setBackground(rect(PANEL_FILL, PANEL_STROKE, 1, 16));
-        LinearLayout lt = new LinearLayout(this);
-        lt.setGravity(Gravity.CENTER_VERTICAL);
-        lt.setPadding(dp(6), 0, 0, 0);
-        leftTitleIcon = icon(R.drawable.ic_play_circle, 22, 0xFF3FD97F);
-        leftTitle = text("Start at", 16, WHITE, true);
-        leftTitle.setIncludeFontPadding(false);
-        lt.addView(leftTitleIcon, new LinearLayout.LayoutParams(dp(22), dp(22)));
-        lt.addView(leftTitle, lin(WRAP, WRAP, 0f, 7, 0, 0, 0));
-        leftCard.addView(lt, new LinearLayout.LayoutParams(MATCH, dp(28)));
-
+        // ---- Start at / Finishes cards
+        int[] cardBg = {argb(.72f, 22, 32, 84), argb(.72f, 12, 18, 56)};
+        int cardEdge = argb(.32f, 120, 145, 235);
+        FrameLayout leftCard = new FrameLayout(this);
+        leftCard.setBackground(gradRect(cardBg, cardEdge, 1, 16));
+        put(stage, leftCard, 10, 347, 180, 138);
+        ImageView lic = ico(R.drawable.ic_clock, 22, 0xFFE6EBFF);
+        put(leftCard, lic, 12, 13, 22, 22);
+        leftTitle = lab("Start at", 15, WHITE, false, Gravity.CENTER_VERTICAL);
+        put(leftCard, leftTitle, 43, 13, 120, 22);
+        stWheelBox = new FrameLayout(this);
+        stWheelBox.setBackground(rect(0x8C060A22, 0, 0, 12));
         stWheel = new OdometerView(this, START_LABELS, selSt);
+        stWheel.setPlain(0f, 10f, new int[]{argb(.15f, 50, 70, 190), argb(.7f, 60, 84, 210), argb(.7f, 60, 84, 210), argb(.15f, 50, 70, 190)},
+                new float[]{0f, 0.3f, 0.7f, 1f}, true, 0, 0xFF9FABD8);
+        stWheel.setBaseSp(19);
+        stWheel.setPitchDp(30);
+        stWheel.setWindowHalfDp(15);
         stWheel.setListener(index -> {
             selSt = index;
             refresh();
         });
-        wheelBox = new FrameLayout(this);
-        wheelBox.addView(stWheel, new FrameLayout.LayoutParams(MATCH, MATCH));
-        startedBox = new LinearLayout(this);
-        startedBox.setOrientation(LinearLayout.VERTICAL);
-        startedBox.setGravity(Gravity.CENTER);
-        startVal = text("", 24, WHITE, true);
-        startVal.setGravity(Gravity.CENTER);
-        startDay = text("", 15, MUTED, false);
-        startDay.setGravity(Gravity.CENTER);
-        startedBox.addView(startVal, new LinearLayout.LayoutParams(WRAP, WRAP));
-        startedBox.addView(startDay, new LinearLayout.LayoutParams(WRAP, WRAP));
-        wheelBox.addView(startedBox, new FrameLayout.LayoutParams(MATCH, MATCH));
-        leftCard.addView(wheelBox, lin(MATCH, dp(120), 0f, 0, 2, 0, 0));
-        leftCol.addView(leftCard, new LinearLayout.LayoutParams(MATCH, WRAP));
+        stWheelBox.addView(stWheel, new FrameLayout.LayoutParams(MATCH, MATCH));
+        put(leftCard, stWheelBox, 8, 48, 164, 88);
+        startVal = lab("", 26, WHITE, true, Gravity.CENTER);
+        startDay = lab("", 15, 0xFFC4CDF0, false, Gravity.CENTER);
+        put(leftCard, startVal, 0, 56, 180, 32);
+        put(leftCard, startDay, 0, 92, 180, 20);
 
-        // Repeat pill under the Start at card
-        repPill = new LinearLayout(this);
-        repPill.setGravity(Gravity.CENTER);
-        repPill.setPadding(dp(10), 0, dp(10), 0);
-        repPill.addView(icon(R.drawable.ic_repeat, 16, WHITE), new LinearLayout.LayoutParams(dp(16), dp(16)));
-        repPillText = text("Repeat", 13, WHITE, true);
-        repPillText.setSingleLine(true);
-        repPillText.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        repPill.addView(repPillText, lin(0, WRAP, 0f, 6, 0, 0, 0));
-        ((LinearLayout.LayoutParams) repPillText.getLayoutParams()).width = WRAP;
-        repPill.setOnClickListener(v -> showRepeat());
-        leftCol.addView(repPill, lin(MATCH, dp(34), 0f, 0, 8, 0, 0));
-        bottom.addView(leftCol, lin(0, WRAP, 0.9f, 0, 0, 5, 0));
+        FrameLayout rightCard = new FrameLayout(this);
+        rightCard.setBackground(gradRect(cardBg, cardEdge, 1, 16));
+        put(stage, rightCard, 200, 347, 180, 138);
+        put(rightCard, ico(R.drawable.ic_flag_o, 22, 0xFFE6EBFF), 12, 13, 22, 22);
+        rightTitle = lab("Finishes", 15, WHITE, false, Gravity.CENTER_VERTICAL);
+        put(rightCard, rightTitle, 43, 13, 120, 22);
+        endVal = lab("", 27, WHITE, true, Gravity.CENTER);
+        endDay = lab("", 15, 0xFFC4CDF0, false, Gravity.CENTER);
+        put(rightCard, endVal, 0, 56, 180, 32);
+        put(rightCard, endDay, 0, 92, 180, 20);
 
-        LinearLayout right = new LinearLayout(this);
-        right.setOrientation(LinearLayout.VERTICAL);
-        right.setPadding(dp(6), dp(4), dp(6), dp(6));
-        right.setBackground(rect(PANEL_FILL, PANEL_STROKE, 1, 16));
-        LinearLayout rt = new LinearLayout(this);
-        rt.setGravity(Gravity.CENTER_VERTICAL);
-        rt.setPadding(dp(6), 0, 0, 0);
-        rt.addView(icon(R.drawable.ic_flag_solid, 22, 0xFFFFC233), new LinearLayout.LayoutParams(dp(22), dp(22)));
-        rightTitle = text("Ends at", 16, WHITE, true);
-        rightTitle.setIncludeFontPadding(false);
-        rt.addView(rightTitle, lin(WRAP, WRAP, 0f, 7, 0, 0, 0));
-        right.addView(rt, new LinearLayout.LayoutParams(MATCH, dp(28)));
-        endBox = new LinearLayout(this);
-        endBox.setOrientation(LinearLayout.VERTICAL);
-        endBox.setGravity(Gravity.CENTER);
-        endVal = text("", 22, WHITE, true);
-        endDay = text("", 14, MUTED, false);
-        endBox.addView(endVal, new LinearLayout.LayoutParams(WRAP, WRAP));
-        endBox.addView(endDay, new LinearLayout.LayoutParams(WRAP, WRAP));
-        right.addView(endBox, lin(MATCH, dp(120), 0f, 0, 2, 0, 0));
-        bottom.addView(right, lin(0, WRAP, 1.1f, 5, 0, 0, 0));
-        col.addView(bottom, lin(MATCH, WRAP, 0f, 0, 10, 0, 0));
-
-        // Choose mode
-        LinearLayout modeHead = new LinearLayout(this);
-        modeHead.setGravity(Gravity.CENTER_VERTICAL);
-        modeHead.addView(text("Choose mode", 17, WHITE, true), new LinearLayout.LayoutParams(0, WRAP, 1f));
-        LinearLayout whatsThis = new LinearLayout(this);
-        whatsThis.setGravity(Gravity.CENTER_VERTICAL);
-        whatsThis.addView(text("What’s the difference?", 13, 0xFF7FB0FF, false));
-        whatsThis.addView(icon(R.drawable.ic_info, 17, 0xFF7FB0FF), lin(dp(17), dp(17), 0f, 6, 0, 0, 0));
-        whatsThis.setOnClickListener(v -> showInfo());
-        modeHead.addView(whatsThis, new LinearLayout.LayoutParams(WRAP, dp(26)));
-        col.addView(modeHead, lin(MATCH, dp(28), 0f, 0, 8, 0, 0));
-
-        cardSilent = modeCard(R.drawable.ic_speaker_off, 0xFF7A3FD0, "Silent");
-        cardDnd = modeCard(R.drawable.ic_bell, 0xFF2F6BFF, "Do Not Disturb");
-        cardSilent.setOnClickListener(v -> chooseMode(Dnd.SILENT));
-        cardDnd.setOnClickListener(v -> chooseMode(Dnd.DND));
-
-        LinearLayout row = new LinearLayout(this);
-        row.setBaselineAligned(false);
-        row.addView(cardDnd, lin(0, MATCH, 1f, 0, 0, 5, 0));
-        row.addView(cardSilent, lin(0, MATCH, 1f, 5, 0, 0, 0));
-        modeRowView = row;
-        col.addView(row, lin(MATCH, dp(44), 0f, 0, 4, 0, 0));
-
-        // Keep music playing
-        musicRow = new LinearLayout(this);
-        musicRow.setGravity(Gravity.CENTER_VERTICAL);
-        musicRow.setPadding(dp(12), 0, dp(12), 0);
-        musicRow.addView(iconCircle(R.drawable.ic_music, 0xFF17A596, 30, 17), new LinearLayout.LayoutParams(dp(30), dp(30)));
-        LinearLayout mt = new LinearLayout(this);
-        mt.setOrientation(LinearLayout.VERTICAL);
-        mt.addView(text("Keep music playing", 15, WHITE, true));
-        mt.addView(text("Works in both modes", 11, 0xFFC4CDF0, false));
-        musicRow.addView(mt, lin(0, WRAP, 1f, 10, 0, 0, 0));
-        musicSwitch = new Switch(this);
-        musicSwitch.setThumbTintList(new ColorStateList(
-                new int[][]{{android.R.attr.state_checked}, {}}, new int[]{WHITE, 0xFF8F9BC9}));
-        musicSwitch.setTrackTintList(new ColorStateList(
-                new int[][]{{android.R.attr.state_checked}, {}}, new int[]{0xFF25D366, 0xFF27315F}));
-        musicListener = (b, on) -> {
-            selMusic = on;
-            Dnd.prefs(this).edit().putBoolean(Dnd.KEY_SEL_MUSIC, on).apply();
-            refresh();
-        };
-        musicSwitch.setOnCheckedChangeListener(musicListener);
-        musicState = text("OFF", 13, 0xFF8F9BC9, true);
-        musicState.setGravity(Gravity.END);
-        musicRow.addView(musicState, lin(dp(32), WRAP, 0f, 0, 0, 8, 0));
-        musicRow.addView(musicSwitch, new LinearLayout.LayoutParams(WRAP, WRAP));
-        col.addView(musicRow, lin(MATCH, dp(54), 0f, 0, 8, 0, 0));
-
+        // ---- Start / End button
         goBar = new LinearLayout(this);
         goBar.setGravity(Gravity.CENTER);
-        goIcon = icon(R.drawable.ic_play, 18, WHITE);
-        goText = text("", 18, WHITE, true);
-        goText.setLetterSpacing(0.04f);
-        goBar.addView(goIcon, new LinearLayout.LayoutParams(dp(18), dp(18)));
-        goBar.addView(goText, lin(WRAP, WRAP, 0f, 9, 0, 0, 0));
+        goIcon = ico(R.drawable.ic_play, 22, WHITE);
+        goText = lab("", 17, WHITE, true, Gravity.CENTER);
+        goText.setLetterSpacing(0.02f);
+        goBar.addView(goIcon, new LinearLayout.LayoutParams(dp(22), dp(22)));
+        goBar.addView(goText, lin(WRAP, WRAP, 0f, 12, 0, 0, 0));
         goBar.setOnClickListener(v -> toggle());
-        col.addView(goBar, lin(MATCH, dp(54), 0f, 0, 12, 0, 0));
-        return root;
+        put(stage, goBar, 10, 500, 370, 58);
+
+        // ---- mode buttons
+        cardDnd = modeBtn(R.drawable.ic_bell, 0, "Do Not Disturb", 0xFFFFFFFF);
+        cardSilent = modeBtn(R.drawable.ic_speaker_off, 1, "Silent", 0xFFD9B8FF);
+        cardDnd.setOnClickListener(v -> chooseMode(Dnd.DND));
+        cardSilent.setOnClickListener(v -> chooseMode(Dnd.SILENT));
+        put(stage, cardDnd, 10, 584, 182, 64);
+        put(stage, cardSilent, 198, 584, 182, 64);
+
+        rootView.addView(stage, new FrameLayout.LayoutParams(dp(390), dp(690), Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+        rootView.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            float wpx = r - l;
+            float hpx = b - t;
+            float k = Math.min(wpx / dp(390), hpx / dp(690));
+            stage.setPivotX(dp(195));
+            stage.setPivotY(0);
+            stage.setScaleX(k);
+            stage.setScaleY(k);
+            stage.setTranslationY(Math.max(0f, (hpx - dp(690) * k) / 2f));
+        });
+
+        settingsView = buildSettings();
+        settingsView.setVisibility(View.GONE);
+        rootView.addView(settingsView, new FrameLayout.LayoutParams(MATCH, MATCH));
+        return rootView;
     }
 
-    private LinearLayout modeCard(int iconRes, int circleColor, String title) {
-        LinearLayout card = new LinearLayout(this);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(8), dp(6), dp(6), dp(6));
-        card.setClickable(true);
+    private GradientDrawable gradRect(int[] colors, int stroke, int strokeDp, int radiusDp) {
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
+        g.setCornerRadius(dp(radiusDp));
+        if (strokeDp > 0) {
+            g.setStroke(dp(strokeDp), stroke);
+        }
+        return g;
+    }
 
+    private LinearLayout modeBtn(int iconRes, int kind, String title, int tint) {
+        LinearLayout b = new LinearLayout(this);
+        b.setGravity(Gravity.CENTER);
+        b.setClickable(true);
         FrameLayout circle = new FrameLayout(this);
-        GradientDrawable oval = new GradientDrawable();
-        oval.setShape(GradientDrawable.OVAL);
-        oval.setColor(circleColor);
-        circle.setBackground(oval);
-        circle.addView(icon(iconRes, 16, WHITE), new FrameLayout.LayoutParams(dp(16), dp(16), Gravity.CENTER));
-        card.addView(circle, new LinearLayout.LayoutParams(dp(28), dp(28)));
-
-        TextView t = text(title, 13.5f, WHITE, true);
-        t.setSingleLine(true);
-        card.addView(t, lin(0, WRAP, 1f, 6, 0, 0, 0));
-        return card;
+        GradientDrawable glow = new GradientDrawable();
+        glow.setShape(GradientDrawable.OVAL);
+        glow.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        glow.setGradientRadius(dp(20));
+        glow.setColors(kind == 0 ? new int[]{argb(.55f, 140, 190, 255), argb(0f, 80, 130, 255)}
+                : new int[]{argb(.6f, 170, 110, 255), argb(0f, 120, 60, 220)});
+        circle.setBackground(glow);
+        circle.addView(ico(iconRes, 30, tint), new FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER));
+        b.addView(circle, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        b.addView(lab(title, 15, WHITE, false, Gravity.CENTER_VERTICAL), lin(WRAP, WRAP, 0f, 6, 0, 0, 0));
+        return b;
     }
 
     private void styleCards(int mode) {
-        cardSilent.setBackground(rect(mode == Dnd.SILENT ? 0x807440C8 : 0x40582CA0,
-                mode == Dnd.SILENT ? 0xFFD9A0FF : 0x59C48CFF, 2, 14));
-        cardDnd.setBackground(rect(mode == Dnd.DND ? 0x802854D2 : 0x401E3CA0,
-                mode == Dnd.DND ? 0xFF6F9CFF : 0x596496FF, 2, 14));
+        styleMode(cardDnd, mode == Dnd.DND, 0);
+        styleMode(cardSilent, mode == Dnd.SILENT, 1);
     }
+
+    private void styleMode(View b, boolean sel, int kind) {
+        int[] c;
+        int stroke;
+        int glow;
+        if (kind == 0) {
+            c = sel ? new int[]{0xFF3F7DFF, 0xFF2350D8} : new int[]{argb(.45f, 40, 80, 200), argb(.45f, 24, 48, 140)};
+            stroke = sel ? 0xFF8FB6FF : argb(.45f, 110, 150, 255);
+            glow = 0xFF3C78FF;
+        } else {
+            c = sel ? new int[]{0xFF8A4FF0, 0xFF5E2CC0} : new int[]{argb(.5f, 96, 52, 180), argb(.5f, 60, 30, 130)};
+            stroke = sel ? 0xFFD6A8FF : argb(.5f, 170, 120, 255);
+            glow = 0xFFA05AFF;
+        }
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, c);
+        g.setCornerRadius(dp(16));
+        g.setStroke(dp(1.5f), stroke);
+        b.setBackground(g);
+        b.setElevation(sel ? dp(10) : 0);
+        b.setOutlineSpotShadowColor(glow);
+        b.setOutlineAmbientShadowColor(glow);
+    }
+
+
 
     // ------------------------------------------------------------------ behaviour
 
@@ -464,6 +494,39 @@ public class MainActivity extends Activity {
         refresh();
     }
 
+    private int presetMin(int p) {
+        return Dnd.prefs(this).getInt("pMin" + p, PRESET_DEF_MIN[p]);
+    }
+
+    private int presetMode(int p) {
+        return Dnd.prefs(this).getInt("pMode" + p, PRESET_DEF_MODE[p]);
+    }
+
+    private boolean presetMusic(int p) {
+        return Dnd.prefs(this).getBoolean("pMusic" + p, PRESET_DEF_MUSIC[p]);
+    }
+
+    private int idxForMinutes(int m) {
+        for (int i = 0; i < MINUTES.length; i++) {
+            if (MINUTES[i] == m) {
+                return i;
+            }
+        }
+        return DEFAULT_IDX;
+    }
+
+    private void applyPreset(int p) {
+        if (locked()) {
+            return;
+        }
+        selIdx = idxForMinutes(presetMin(p));
+        selMode = presetMode(p);
+        selMusic = presetMusic(p);
+        Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_IDX_V2, selIdx).putInt(Dnd.KEY_SEL_MODE, selMode)
+                .putBoolean(Dnd.KEY_SEL_MUSIC, selMusic).apply();
+        refresh();
+    }
+
     private void refresh() {
         Dnd.expireIfDue(this);
         SharedPreferences p = Dnd.prefs(this);
@@ -490,17 +553,16 @@ public class MainActivity extends Activity {
             start = planned ? Dnd.nextStart(selSt, selDays, now) : now;
             end = minutes < 0 ? 0 : start + minutes * 60_000L;
         }
-
         if (!idle) {
             selDays = p.getInt(Dnd.KEY_REP_MASK, 0);
         }
-        boolean hasDays = selDays != 0;
-        repPill.setEnabled(idle);
-        repPill.setAlpha(idle || hasDays ? 1f : 0.5f);
-        repPill.setBackground(hasDays ? rect(0xFF6A5CF5, 0xFFB3A8FF, 1, 17) : rect(0x99101A46, 0x80829AE6, 1, 17));
-        repPillText.setText(hasDays ? daysSummary(selDays) : "Repeat");
+        if (sched) {
+            selMusic = p.getBoolean(Dnd.KEY_SCHED_MUSIC, selMusic);
+        } else if (active) {
+            selMusic = p.getBoolean("music", selMusic);
+        }
 
-        // Controls: greyed out and locked once scheduled or running
+        // locked while scheduled or running
         durWheel.setEnabled(idle);
         durWheel.setSelected(selIdx);
         durWheel.setVisibility(idle ? View.VISIBLE : View.GONE);
@@ -509,53 +571,30 @@ public class MainActivity extends Activity {
         stWheel.setEnabled(idle);
         stWheel.setSelected(selSt);
         boolean startedNow = active && p.getBoolean("startedNow", false);
-        stWheel.setAlpha(idle ? 1f : 0.4f);
-        stWheel.setVisibility(startedNow ? View.GONE : View.VISIBLE);
-        startedBox.setVisibility(startedNow ? View.VISIBLE : View.GONE);
-        leftTitleIcon.setImageResource(startedNow ? R.drawable.ic_clock : R.drawable.ic_play_circle);
+        stWheelBox.setAlpha(idle ? 1f : 0.45f);
+        stWheelBox.setVisibility(startedNow ? View.GONE : View.VISIBLE);
+        startVal.setVisibility(startedNow ? View.VISIBLE : View.GONE);
+        startDay.setVisibility(startedNow ? View.VISIBLE : View.GONE);
         leftTitle.setText(startedNow ? "Started" : "Start at");
-        rightTitle.setText(active ? "Ends" : "Ends at");
-        endBox.setBackground(active ? null : rect(0x99080E2C, PANEL_STROKE, 1, 14));
-        modeRowView.setAlpha(idle ? 1f : 0.4f);
-        musicRow.setAlpha(idle ? 1f : 0.4f);
-        musicSwitch.setEnabled(idle);
-        cardSilent.setEnabled(idle);
+        float a = idle ? 1f : 0.45f;
+        cardDnd.setAlpha(a);
+        cardSilent.setAlpha(a);
         cardDnd.setEnabled(idle);
-        if (sched) {
-            selMusic = p.getBoolean(Dnd.KEY_SCHED_MUSIC, selMusic);
-        } else if (active) {
-            selMusic = p.getBoolean("music", selMusic);
-        }
-        musicState.setText(selMusic ? "ON" : "OFF");
-        musicState.setTextColor(selMusic ? 0xFF5DFF9A : 0xFF8F9BC9);
-        musicRow.setBackground(selMusic ? rect(0x2925D366, 0xBF25D366, 1, 16)
-                : rect(0x80101A46, 0x4D829AE6, 1, 16));
-        if (musicSwitch.isChecked() != selMusic) {
-            musicSwitch.setOnCheckedChangeListener(null);
-            musicSwitch.setChecked(selMusic);
-            musicSwitch.setOnCheckedChangeListener(musicListener);
-        }
+        cardSilent.setEnabled(idle);
         styleCards(selMode);
-
-        // Banner
-        if (active) {
-            banner.setBackground(rect(0x66203CA0, 0xBF6E96FF, 2, 16));
-            bannerIcon.setColorFilter(0xFF9EC3FF);
-            bannerTitle.setTextColor(WHITE);
-            bannerTitle.setText("Sleep Timer Active");
-        } else if (sched) {
-            banner.setBackground(rect(0x66785000, 0xCCFFBE50, 2, 16));
-            bannerIcon.setColorFilter(0xFFFFD27A);
-            bannerTitle.setTextColor(0xFFFFE0A0);
-            bannerTitle.setText("Sleep Timer Scheduled");
-        } else {
-            banner.setBackground(rect(0x59126440, 0xBF3DDC84, 2, 16));
-            bannerIcon.setColorFilter(0xFF6DF0A4);
-            bannerTitle.setTextColor(0xFF8AF3B4);
-            bannerTitle.setText("Sleep Timer Inactive");
+        for (int i = 0; i < 3; i++) {
+            tiles[i < 2 ? i : 3].setAlpha(idle ? 1f : 0.55f);
         }
 
-        // Ring
+        // preset tiles
+        for (int i = 0; i < 3; i++) {
+            tileDur[i].setText(shortDur(presetMin(i)));
+            tileStatus[i][0].setVisibility(presetMode(i) == Dnd.SILENT ? View.VISIBLE : View.GONE);
+            tileStatus[i][1].setVisibility(presetMode(i) == Dnd.DND ? View.VISIBLE : View.GONE);
+            tileStatus[i][2].setVisibility(presetMusic(i) ? View.VISIBLE : View.GONE);
+        }
+
+        // ring
         float frac = 0f;
         if (active) {
             clockView.setTextSize(30);
@@ -580,9 +619,9 @@ public class MainActivity extends Activity {
             }
             ringLabel.setText("until it starts");
         }
-        ring.setFraction(frac);
+        ring.setFraction(frac, active);
 
-        // Start / End bar
+        // Start / End button
         GradientDrawable g;
         if (idle) {
             g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF26BD65, 0xFF0E7D3D});
@@ -594,22 +633,279 @@ public class MainActivity extends Activity {
             goText.setText(active ? "END SLEEP TIMER" : "CANCEL SCHEDULED START");
         }
         g.setStroke(dp(1), 0x40FFFFFF);
-        g.setCornerRadius(dp(27));
+        g.setCornerRadius(dp(29));
         goBar.setBackground(g);
 
-        // Start / end times
         startVal.setText(hhmm(start));
         startDay.setText(dayStr(start, now));
         endVal.setText(end == 0 ? "--:--" : hhmm(end));
         endDay.setText(end == 0 ? "no end time" : dayStr(end, now));
 
-        // Sleeping zeds while the timer runs
         if (active && !zedsRunning) {
             startZeds();
         } else if (!active && zedsRunning) {
             stopZeds();
         }
+        if (settingsView != null && settingsView.getVisibility() == View.VISIBLE) {
+            refreshSettings();
+        }
     }
+
+    // ------------------------------------------------------------------ settings
+
+    @Override
+    public void onBackPressed() {
+        if (settingsView != null && settingsView.getVisibility() == View.VISIBLE) {
+            settingsView.setVisibility(View.GONE);
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    private void showSettings() {
+        refreshSettings();
+        settingsView.scrollTo(0, 0);
+        settingsView.setVisibility(View.VISIBLE);
+    }
+
+    private LinearLayout section(LinearLayout parent, String title) {
+        parent.addView(text(title, 13, 0xFF9FB0F0, true), lin(WRAP, WRAP, 0f, 4, 18, 0, 6));
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackground(rect(0x99101A46, 0x47829AE6, 1, 16));
+        parent.addView(box, lin(MATCH, WRAP, 0f, 0, 0, 0, 0));
+        return box;
+    }
+
+    private ScrollView buildSettings() {
+        ScrollView sv = new ScrollView(this);
+        sv.setBackgroundColor(0xFF090F2C);
+        sv.setVerticalScrollBarEnabled(false);
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPadding(dp(16), dp(14), dp(16), dp(30));
+        sv.addView(col, new ScrollView.LayoutParams(MATCH, WRAP));
+        sv.setFitsSystemWindows(true);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView back = icon(R.drawable.ic_back, 22, WHITE);
+        back.setPadding(dp(10), dp(10), dp(10), dp(10));
+        back.setOnClickListener(v -> settingsView.setVisibility(View.GONE));
+        head.addView(back, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        head.addView(text("Setup", 24, WHITE, true), lin(WRAP, WRAP, 0f, 6, 0, 0, 0));
+        col.addView(head, lin(MATCH, WRAP, 0f, 0, 0, 0, 0));
+
+        LinearLayout pr = section(col, "PRESETS");
+        presetList = pr;
+
+        LinearLayout rp = section(col, "REPEAT (for scheduled starts)");
+        chipRow = new LinearLayout(this);
+        chipRow.setGravity(Gravity.CENTER);
+        chipRow.setPadding(dp(8), dp(12), dp(8), dp(4));
+        String[] dn = {"M", "T", "W", "T", "F", "S", "S"};
+        for (int i = 0; i < 7; i++) {
+            final int bit = i;
+            TextView c = text(dn[i], 15, WHITE, true);
+            c.setGravity(Gravity.CENTER);
+            c.setOnClickListener(v -> {
+                if (locked()) {
+                    return;
+                }
+                selDays ^= (1 << bit);
+                Dnd.prefs(this).edit().putInt(Dnd.KEY_REP_MASK, selDays).apply();
+                refresh();
+            });
+            setChips[i] = c;
+            chipRow.addView(c, lin(0, dp(38), 1f, 3, 0, 3, 0));
+        }
+        rp.addView(chipRow, lin(MATCH, WRAP, 0f, 0, 0, 0, 0));
+        repHint = text("", 13, 0xFFAAB6E0, false);
+        rp.addView(repHint, lin(MATCH, WRAP, 0f, 16, 4, 16, 12));
+
+        LinearLayout mu = section(col, "MUSIC");
+        LinearLayout mrow = new LinearLayout(this);
+        mrow.setGravity(Gravity.CENTER_VERTICAL);
+        mrow.setPadding(dp(14), dp(10), dp(14), dp(10));
+        mrow.addView(icon(R.drawable.ic_music, 22, 0xFF6DF0C4), new LinearLayout.LayoutParams(dp(26), dp(26)));
+        mrow.addView(text("Keep music playing", 16, WHITE, false), lin(0, WRAP, 1f, 12, 0, 0, 0));
+        setMusic = new Switch(this);
+        setMusicListener = (b, on) -> {
+            if (locked()) {
+                b.setChecked(selMusic);
+                return;
+            }
+            selMusic = on;
+            Dnd.prefs(this).edit().putBoolean(Dnd.KEY_SEL_MUSIC, on).apply();
+        };
+        setMusic.setOnCheckedChangeListener(setMusicListener);
+        mrow.addView(setMusic, new LinearLayout.LayoutParams(WRAP, WRAP));
+        mu.addView(mrow, lin(MATCH, WRAP, 0f, 0, 0, 0, 0));
+
+        LinearLayout dm = section(col, "DEFAULT MODE");
+        LinearLayout drow = new LinearLayout(this);
+        drow.setPadding(dp(10), dp(10), dp(10), dp(10));
+        defDnd = text("Do Not Disturb", 15, WHITE, true);
+        defSilent = text("Silent", 15, WHITE, true);
+        defDnd.setGravity(Gravity.CENTER);
+        defSilent.setGravity(Gravity.CENTER);
+        defDnd.setOnClickListener(v -> setDefault(Dnd.DND));
+        defSilent.setOnClickListener(v -> setDefault(Dnd.SILENT));
+        drow.addView(defDnd, lin(0, dp(44), 1f, 0, 0, 5, 0));
+        drow.addView(defSilent, lin(0, dp(44), 1f, 5, 0, 0, 0));
+        dm.addView(drow, lin(MATCH, WRAP, 0f, 0, 0, 0, 0));
+
+        LinearLayout hi = section(col, "HELP");
+        hi.addView(linkRow(R.drawable.ic_info, "Help & Information", "What’s the difference between the modes?", v -> showInfo()),
+                lin(MATCH, WRAP, 0f, 0, 0, 0, 0));
+        LinearLayout ab = section(col, "ABOUT");
+        aboutSub = text("KipQuiet · sets Silent or Do Not Disturb for a time you choose, then puts your phone back how it was.", 14, 0xFFC4CDF0, false);
+        ab.addView(aboutSub, lin(MATCH, WRAP, 0f, 14, 12, 14, 12));
+        return sv;
+    }
+
+    private View linkRow(int iconRes, String title, String sub, View.OnClickListener l) {
+        LinearLayout r = new LinearLayout(this);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setPadding(dp(14), dp(12), dp(14), dp(12));
+        r.addView(icon(iconRes, 22, 0xFF9EC3FF), new LinearLayout.LayoutParams(dp(26), dp(26)));
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(LinearLayout.VERTICAL);
+        t.addView(text(title, 16, WHITE, false), new LinearLayout.LayoutParams(WRAP, WRAP));
+        t.addView(text(sub, 13, 0xFFAAB6E0, false), new LinearLayout.LayoutParams(WRAP, WRAP));
+        r.addView(t, lin(0, WRAP, 1f, 12, 0, 0, 0));
+        r.addView(icon(R.drawable.ic_chev, 18, 0xFF9FB0F0), new LinearLayout.LayoutParams(dp(20), dp(20)));
+        r.setOnClickListener(l);
+        return r;
+    }
+
+    private void setDefault(int mode) {
+        Dnd.prefs(this).edit().putInt("defMode", mode).apply();
+        if (!locked()) {
+            selMode = mode;
+            Dnd.prefs(this).edit().putInt(Dnd.KEY_SEL_MODE, mode).apply();
+        }
+        refresh();
+    }
+
+    private void refreshSettings() {
+        // presets
+        presetList.removeAllViews();
+        for (int i = 0; i < 3; i++) {
+            final int pi = i;
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(14), dp(10), dp(6), dp(10));
+            row.addView(text(PRESET_EMOJI[i], 22, WHITE, false), new LinearLayout.LayoutParams(dp(34), WRAP));
+            LinearLayout t = new LinearLayout(this);
+            t.setOrientation(LinearLayout.VERTICAL);
+            t.addView(text(PRESET_NAMES[i], 16, WHITE, true), new LinearLayout.LayoutParams(WRAP, WRAP));
+            t.addView(text(shortDur(presetMin(i)) + " · " + (presetMode(i) == Dnd.SILENT ? "Silent" : "Do Not Disturb")
+                    + (presetMusic(i) ? " · music on" : ""), 13, 0xFFAAB6E0, false), new LinearLayout.LayoutParams(WRAP, WRAP));
+            row.addView(t, lin(0, WRAP, 1f, 8, 0, 0, 0));
+            TextView dots = text("⋮", 24, 0xFFC4CDF0, true);
+            dots.setGravity(Gravity.CENTER);
+            dots.setOnClickListener(v -> editPreset(pi));
+            row.addView(dots, new LinearLayout.LayoutParams(dp(48), dp(44)));
+            presetList.addView(row, lin(MATCH, WRAP, 0f, 0, 0, 0, 0));
+        }
+        // repeat
+        for (int i = 0; i < 7; i++) {
+            boolean on = (selDays & (1 << i)) != 0;
+            setChips[i].setBackground(on ? ovalBg(0xFF6A5CF5, 0xFFB3A8FF) : ovalBg(0x99101A46, 0x66829AE6));
+            setChips[i].setTextColor(on ? WHITE : 0xFFAAB6E0);
+            setChips[i].setAlpha(locked() ? 0.5f : 1f);
+        }
+        repHint.setText(selDays == 0 ? "No repeat: a scheduled start runs once."
+                : "Repeats: " + daysSummary(selDays));
+        if (setMusic.isChecked() != selMusic) {
+            setMusic.setOnCheckedChangeListener(null);
+            setMusic.setChecked(selMusic);
+            setMusic.setOnCheckedChangeListener(setMusicListener);
+        }
+        int dm = Dnd.prefs(this).getInt("defMode", Dnd.DND);
+        defDnd.setBackground(dm == Dnd.DND ? rect(0xFF2F63F0, 0xFF8FB6FF, 1, 14) : rect(0x66203080, 0x66829AE6, 1, 14));
+        defSilent.setBackground(dm == Dnd.SILENT ? rect(0xFF7A44D8, 0xFFD6A8FF, 1, 14) : rect(0x66402080, 0x66829AE6, 1, 14));
+    }
+
+    private void editPreset(final int pi) {
+        final Dialog d = new Dialog(this);
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        final int[] idx = {idxForMinutes(presetMin(pi))};
+        final int[] mode = {presetMode(pi)};
+        final boolean[] mus = {presetMusic(pi)};
+
+        LinearLayout sheet = new LinearLayout(this);
+        sheet.setOrientation(LinearLayout.VERTICAL);
+        sheet.setPadding(dp(18), dp(16), dp(18), dp(18));
+        sheet.setBackground(rect(0xFF141F52, 0xFF4A62C0, 1, 22));
+        sheet.addView(text("Edit " + PRESET_NAMES[pi], 22, WHITE, true), lin(WRAP, WRAP, 0f, 0, 0, 0, 8));
+        sheet.addView(text("Duration", 13, 0xFF9FB0F0, true), lin(WRAP, WRAP, 0f, 0, 4, 0, 4));
+        OdometerView w = new OdometerView(this, LABELS, idx[0]);
+        w.setPlain(0f, 12f, new int[]{0xFF4A3FD0, 0xFF2F289A}, new float[]{0f, 1f}, false, 0x8C968CFF, 0xFF9FABD8);
+        w.setBaseSp(22);
+        w.setPitchDp(38);
+        w.setFitDp(150);
+        w.setWindowHalfDp(19);
+        w.setListener(i -> idx[0] = i);
+        sheet.addView(w, lin(MATCH, dp(114), 0f, 0, 0, 0, 0));
+
+        sheet.addView(text("Mode", 13, 0xFF9FB0F0, true), lin(WRAP, WRAP, 0f, 0, 12, 0, 4));
+        LinearLayout mrow = new LinearLayout(this);
+        final TextView bd = text("Do Not Disturb", 15, WHITE, true);
+        final TextView bs = text("Silent", 15, WHITE, true);
+        bd.setGravity(Gravity.CENTER);
+        bs.setGravity(Gravity.CENTER);
+        final Runnable paint = () -> {
+            bd.setBackground(mode[0] == Dnd.DND ? rect(0xFF2F63F0, 0xFF8FB6FF, 1, 14) : rect(0x66203080, 0x66829AE6, 1, 14));
+            bs.setBackground(mode[0] == Dnd.SILENT ? rect(0xFF7A44D8, 0xFFD6A8FF, 1, 14) : rect(0x66402080, 0x66829AE6, 1, 14));
+        };
+        paint.run();
+        bd.setOnClickListener(v -> {
+            mode[0] = Dnd.DND;
+            paint.run();
+        });
+        bs.setOnClickListener(v -> {
+            mode[0] = Dnd.SILENT;
+            paint.run();
+        });
+        mrow.addView(bd, lin(0, dp(44), 1f, 0, 0, 5, 0));
+        mrow.addView(bs, lin(0, dp(44), 1f, 5, 0, 0, 0));
+        sheet.addView(mrow, lin(MATCH, WRAP, 0f, 0, 0, 0, 0));
+
+        LinearLayout krow = new LinearLayout(this);
+        krow.setGravity(Gravity.CENTER_VERTICAL);
+        krow.addView(text("Keep music playing", 16, WHITE, false), lin(0, WRAP, 1f, 0, 0, 0, 0));
+        Switch sw = new Switch(this);
+        sw.setChecked(mus[0]);
+        sw.setOnCheckedChangeListener((b, on) -> mus[0] = on);
+        krow.addView(sw, new LinearLayout.LayoutParams(WRAP, WRAP));
+        sheet.addView(krow, lin(MATCH, WRAP, 0f, 0, 14, 0, 0));
+
+        LinearLayout btns = new LinearLayout(this);
+        TextView cancel = text("Cancel", 16, 0xFFC4CDF0, true);
+        cancel.setGravity(Gravity.CENTER);
+        cancel.setOnClickListener(v -> d.dismiss());
+        TextView save = text("Save", 16, WHITE, true);
+        save.setGravity(Gravity.CENTER);
+        save.setBackground(rect(0xFF2F63F0, 0xFF8FB6FF, 1, 14));
+        save.setOnClickListener(v -> {
+            Dnd.prefs(this).edit().putInt("pMin" + pi, MINUTES[idx[0]]).putInt("pMode" + pi, mode[0])
+                    .putBoolean("pMusic" + pi, mus[0]).apply();
+            d.dismiss();
+            refresh();
+        });
+        btns.addView(cancel, lin(0, dp(46), 1f, 0, 0, 6, 0));
+        btns.addView(save, lin(0, dp(46), 1f, 6, 0, 0, 0));
+        sheet.addView(btns, lin(MATCH, WRAP, 0f, 0, 16, 0, 0));
+
+        d.setContentView(sheet);
+        d.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        d.getWindow().setLayout((int) (getResources().getDisplayMetrics().widthPixels * 0.92f), WRAP);
+        d.show();
+    }
+
+
 
     private void startZeds() {
         zedsRunning = true;
@@ -665,85 +961,6 @@ public class MainActivity extends Activity {
             }
         }
         return sb.toString();
-    }
-
-    private void showRepeat() {
-        if (locked()) {
-            return;
-        }
-        final Dialog d = new Dialog(this);
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        LinearLayout sheet = new LinearLayout(this);
-        sheet.setOrientation(LinearLayout.VERTICAL);
-        sheet.setPadding(dp(16), dp(12), dp(16), dp(24));
-        float r = dp(28);
-        GradientDrawable sbg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xFF18265A, 0xFF0C1438});
-        sbg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
-        sheet.setBackground(sbg);
-        View grabber = new View(this);
-        grabber.setBackground(rect(0x73BEC8F0, 0, 0, 3));
-        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(dp(44), dp(5));
-        gp.gravity = Gravity.CENTER_HORIZONTAL;
-        sheet.addView(grabber, gp);
-        sheet.addView(text("Repeat on", 24, WHITE, true), lin(MATCH, WRAP, 0f, 0, 14, 0, 0));
-        sheet.addView(text("Starts at the Start at time on the days you choose", 13, 0xFFB8C6F2, false),
-                lin(MATCH, WRAP, 0f, 0, 2, 0, 0));
-
-        String[] dl = {"M", "T", "W", "T", "F", "S", "S"};
-        final TextView[] chips = new TextView[7];
-        LinearLayout rowChips = new LinearLayout(this);
-        for (int i = 0; i < 7; i++) {
-            final int idx = i;
-            TextView chip = text(dl[i], 15, WHITE, true);
-            chip.setGravity(Gravity.CENTER);
-            chip.setOnClickListener(v -> {
-                selDays ^= (1 << idx);
-                if ((selDays & (1 << idx)) != 0 && selSt == 0) {
-                    java.util.Calendar c = java.util.Calendar.getInstance();
-                    int mod = c.get(java.util.Calendar.HOUR_OF_DAY) * 60 + c.get(java.util.Calendar.MINUTE);
-                    selSt = ((mod / 15 + 1) % 96) + 1;
-                    stWheel.setSelected(selSt);
-                }
-                styleDayChips(chips);
-                refresh();
-            });
-            chips[i] = chip;
-            rowChips.addView(chip, lin(0, dp(44), 1f, 3, 0, 3, 0));
-        }
-        styleDayChips(chips);
-        sheet.addView(rowChips, lin(MATCH, WRAP, 0f, 0, 18, 0, 0));
-
-        LinearLayout btns = new LinearLayout(this);
-        TextView clear = text("Clear", 15, 0xFFDBE3FF, true);
-        clear.setGravity(Gravity.CENTER);
-        clear.setBackground(rect(0, 0x80829AE6, 1, 25));
-        clear.setOnClickListener(v -> {
-            selDays = 0;
-            refresh();
-            d.dismiss();
-        });
-        TextView done = text("Done", 18, WHITE, true);
-        done.setGravity(Gravity.CENTER);
-        GradientDrawable dbg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xFF6A5CF5, 0xFF4F40DF});
-        dbg.setCornerRadius(dp(25));
-        done.setBackground(dbg);
-        done.setOnClickListener(v -> d.dismiss());
-        btns.addView(clear, lin(dp(110), dp(50), 0f, 0, 0, 10, 0));
-        btns.addView(done, lin(0, dp(50), 1f, 0, 0, 0, 0));
-        sheet.addView(btns, lin(MATCH, WRAP, 0f, 0, 22, 0, 0));
-
-        d.setContentView(sheet);
-        Window w = d.getWindow();
-        if (w != null) {
-            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            w.setLayout(MATCH, WRAP);
-            w.setGravity(Gravity.BOTTOM);
-            w.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            w.setDimAmount(0.6f);
-        }
-        d.show();
     }
 
     private void styleDayChips(TextView[] chips) {

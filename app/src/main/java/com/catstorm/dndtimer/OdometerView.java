@@ -33,6 +33,14 @@ class OdometerView extends View {
     private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
 
+    private boolean plain = false;
+    private float winInsetDp = 4f;
+    private int[] winColors;
+    private float[] winStops;
+    private boolean winHoriz = false;
+    private int winLine = 0;
+    private float winCornerDp = 4f;
+    private int dimColor = 0xFFAAB6E0;
     private float cornerDp = 14f;
     private float baseSp = 21f;
     private float pos;
@@ -83,6 +91,19 @@ class OdometerView extends View {
 
     void setBaseSp(float sp) {
         baseSp = sp;
+        invalidate();
+    }
+
+    /** No drum body or shading: just rolling numbers over a coloured window. */
+    void setPlain(float insetDp, float cornerDp, int[] colors, float[] stops, boolean horizontal, int lineColor, int dim) {
+        plain = true;
+        winInsetDp = insetDp;
+        winCornerDp = cornerDp;
+        winColors = colors;
+        winStops = stops;
+        winHoriz = horizontal;
+        winLine = lineColor;
+        dimColor = dim;
         invalidate();
     }
 
@@ -189,21 +210,34 @@ class OdometerView extends View {
         float cx = w / 2f;
         float cy = h / 2f;
 
-        // drum body
-        fill.setShader(new LinearGradient(0, 0, w, 0,
-                new int[]{0xFF070C24, 0xFF111B48, 0xFF111B48, 0xFF070C24},
-                new float[]{0f, 0.16f, 0.84f, 1f}, Shader.TileMode.CLAMP));
-        rect.set(0, 0, w, h);
-        canvas.drawRoundRect(rect, cornerDp * density, cornerDp * density, fill);
-        fill.setShader(null);
+        if (!plain) {
+            // drum body
+            fill.setShader(new LinearGradient(0, 0, w, 0,
+                    new int[]{0xFF070C24, 0xFF111B48, 0xFF111B48, 0xFF070C24},
+                    new float[]{0f, 0.16f, 0.84f, 1f}, Shader.TileMode.CLAMP));
+            rect.set(0, 0, w, h);
+            canvas.drawRoundRect(rect, cornerDp * density, cornerDp * density, fill);
+            fill.setShader(null);
 
-        // lit window
-        fill.setColor(0x2E786EFF);
-        rect.set(4 * density, cy - winHalfDp * density, w - 4 * density, cy + winHalfDp * density);
-        canvas.drawRoundRect(rect, 4 * density, 4 * density, fill);
-        line.setColor(0x66FFFFFF);
-        canvas.drawLine(rect.left, rect.top, rect.right, rect.top, line);
-        canvas.drawLine(rect.left, rect.bottom, rect.right, rect.bottom, line);
+            // lit window
+            fill.setColor(0x2E786EFF);
+            rect.set(4 * density, cy - winHalfDp * density, w - 4 * density, cy + winHalfDp * density);
+            canvas.drawRoundRect(rect, 4 * density, 4 * density, fill);
+            line.setColor(0x66FFFFFF);
+            canvas.drawLine(rect.left, rect.top, rect.right, rect.top, line);
+            canvas.drawLine(rect.left, rect.bottom, rect.right, rect.bottom, line);
+        } else {
+            rect.set(winInsetDp * density, cy - winHalfDp * density, w - winInsetDp * density, cy + winHalfDp * density);
+            fill.setShader(winHoriz
+                    ? new LinearGradient(rect.left, 0, rect.right, 0, winColors, winStops, Shader.TileMode.CLAMP)
+                    : new LinearGradient(0, rect.top, 0, rect.bottom, winColors, winStops, Shader.TileMode.CLAMP));
+            canvas.drawRoundRect(rect, winCornerDp * density, winCornerDp * density, fill);
+            fill.setShader(null);
+            if (winLine != 0) {
+                line.setColor(winLine);
+                canvas.drawRoundRect(rect, winCornerDp * density, winCornerDp * density, line);
+            }
+        }
 
         // rolling numbers
         for (int i = 0; i < labels.length; i++) {
@@ -224,7 +258,8 @@ class OdometerView extends View {
                     text.setTextSize(sz * fitPx / wdt);
                 }
             }
-            text.setColor(Math.abs(d) < 0.5f ? 0xFFFFFFFF : 0xFFAAB6E0);
+            text.setColor(Math.abs(d) < 0.5f ? 0xFFFFFFFF : dimColor);
+            text.setTypeface(plain && Math.abs(d) >= 0.5f ? Typeface.DEFAULT : Typeface.DEFAULT_BOLD);
             text.setAlpha((int) (255 * Math.pow(Math.max(0f, cos), 1.3)));
             canvas.save();
             canvas.translate(cx, y);
@@ -233,6 +268,9 @@ class OdometerView extends View {
             canvas.restore();
         }
 
+        if (plain) {
+            return;
+        }
         // top and bottom shading, so it reads as a curved drum
         float sh = 46 * density;
         fill.setShader(new LinearGradient(0, 0, 0, sh, 0xF7050818, 0x00050818, Shader.TileMode.CLAMP));
