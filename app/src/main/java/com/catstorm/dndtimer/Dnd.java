@@ -52,6 +52,10 @@ final class Dnd {
     static final String KEY_SCHED_CALLS = "schedCalls";
     private static final String KEY_REP_ALARMS = "repAlarms";
     static final String KEY_SCHED_ALARMS = "schedAlarms";
+    private static final String KEY_REP_LABEL = "repLabel";
+    static final String KEY_SCHED_LABEL = "schedLabel";
+    static final String KEY_LABEL = "runLabel";
+    static final String KEY_HISTORY = "history";   // JSON array of the last runs, newest first
     static final String KEY_SCHED = "sched";
     static final String KEY_SCHED_START = "schedStart";
     static final String KEY_SCHED_MODE = "schedMode";
@@ -77,7 +81,7 @@ final class Dnd {
      * Starts a session now, or at startAt (a clock time in the future) if that is given.
      * minutes < 0 means "until I turn it off". False if DND access is not granted.
      */
-    static boolean start(Context c, int mode, int minutes, boolean music, int calls, int alarms, long startAt, int stIdx, int repMask) {
+    static boolean start(Context c, int mode, int minutes, boolean music, int calls, int alarms, String label, long startAt, int stIdx, int repMask) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (!nm.isNotificationPolicyAccessGranted()) {
             return false;
@@ -87,19 +91,19 @@ final class Dnd {
             SharedPreferences.Editor re = prefs(c).edit();
             if (repMask != 0) {
                 re.putInt(KEY_REP_MASK, repMask).putInt(KEY_REP_IDX, stIdx).putInt(KEY_REP_MODE, mode)
-                        .putInt(KEY_REP_MIN, minutes).putBoolean(KEY_REP_MUSIC, music).putInt(KEY_REP_CALLS, calls).putInt(KEY_REP_ALARMS, alarms);
+                        .putInt(KEY_REP_MIN, minutes).putBoolean(KEY_REP_MUSIC, music).putInt(KEY_REP_CALLS, calls).putInt(KEY_REP_ALARMS, alarms).putString(KEY_REP_LABEL, label);
             } else {
                 re.remove(KEY_REP_MASK);
             }
             re.apply();
             prefs(c).edit().putBoolean(KEY_SCHED, true).putLong(KEY_SCHED_START, startAt)
                     .putInt(KEY_SCHED_MODE, mode).putInt(KEY_SCHED_MIN, minutes)
-                    .putBoolean(KEY_SCHED_MUSIC, music).putInt(KEY_SCHED_CALLS, calls).putInt(KEY_SCHED_ALARMS, alarms).apply();
+                    .putBoolean(KEY_SCHED_MUSIC, music).putInt(KEY_SCHED_CALLS, calls).putInt(KEY_SCHED_ALARMS, alarms).putString(KEY_SCHED_LABEL, label).apply();
             schedule(c, startAt, pendingBegin(c));
             showNotification(c);
             return true;
         }
-        return activate(c, mode, minutes, music, calls, alarms);
+        return activate(c, mode, minutes, music, calls, alarms, label);
     }
 
     /** The scheduled start time has arrived: switch on for real. */
@@ -113,10 +117,11 @@ final class Dnd {
         boolean music = p.getBoolean(KEY_SCHED_MUSIC, false);
         int calls = p.getInt(KEY_SCHED_CALLS, -1);
         int alarms = p.getInt(KEY_SCHED_ALARMS, -1);
+        String label = p.getString(KEY_SCHED_LABEL, "Timer");
         clearScheduled(c);
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm.isNotificationPolicyAccessGranted()) {
-            activate(c, mode, minutes, music, calls, alarms);
+            activate(c, mode, minutes, music, calls, alarms, label);
         } else {
             nm.cancel(NOTE_ID);
         }
@@ -125,12 +130,12 @@ final class Dnd {
     private static void clearScheduled(Context c) {
         c.getSystemService(AlarmManager.class).cancel(pendingBegin(c));
         prefs(c).edit().remove(KEY_SCHED).remove(KEY_SCHED_START).remove(KEY_SCHED_MODE)
-                .remove(KEY_SCHED_MIN).remove(KEY_SCHED_MUSIC).remove(KEY_SCHED_CALLS).remove(KEY_SCHED_ALARMS).apply();
+                .remove(KEY_SCHED_MIN).remove(KEY_SCHED_MUSIC).remove(KEY_SCHED_CALLS).remove(KEY_SCHED_ALARMS).remove(KEY_SCHED_LABEL).apply();
     }
 
     /** calls: -1 = use my own Android settings, 0 = block all calls, 1 = starred contacts only.
      *  alarms: 0 = alarms silenced too, 1 = alarms allowed, -1 = default (allowed in Do Not Disturb, silenced in Silent). */
-    private static boolean activate(Context c, int mode, int minutes, boolean music, int calls, int alarms) {
+    private static boolean activate(Context c, int mode, int minutes, boolean music, int calls, int alarms, String label) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
 
         SharedPreferences p = prefs(c);
@@ -191,7 +196,7 @@ final class Dnd {
 
         long now = System.currentTimeMillis();
         long end = minutes < 0 ? 0 : now + minutes * 60_000L;
-        e.putBoolean(KEY_ACTIVE, true).putBoolean(KEY_MUSIC, music).putLong(KEY_START, now).putLong(KEY_END, end).putInt(KEY_MODE, mode);
+        e.putBoolean(KEY_ACTIVE, true).putBoolean(KEY_MUSIC, music).putLong(KEY_START, now).putLong(KEY_END, end).putInt(KEY_MODE, mode).putString(KEY_LABEL, label);
         e.apply();
 
         if (end != 0) {
@@ -220,7 +225,8 @@ final class Dnd {
                     .putInt(KEY_SCHED_MIN, p.getInt(KEY_REP_MIN, 60))
                     .putBoolean(KEY_SCHED_MUSIC, p.getBoolean(KEY_REP_MUSIC, false))
                     .putInt(KEY_SCHED_CALLS, p.getInt(KEY_REP_CALLS, -1))
-                    .putInt(KEY_SCHED_ALARMS, p.getInt(KEY_REP_ALARMS, -1)).apply();
+                    .putInt(KEY_SCHED_ALARMS, p.getInt(KEY_REP_ALARMS, -1))
+                    .putString(KEY_SCHED_LABEL, p.getString(KEY_REP_LABEL, "Timer")).apply();
             schedule(c, at, pendingBegin(c));
             showNotification(c);
         }
@@ -261,9 +267,35 @@ final class Dnd {
             nm.setInterruptionFilter(
                     p.getInt(KEY_PREV_FILTER, NotificationManager.INTERRUPTION_FILTER_ALL));
         }
+        if (p.getBoolean(KEY_ACTIVE, false)) {
+            recordRun(p);
+        }
         c.getSystemService(AlarmManager.class).cancel(pending(c));
         nm.cancel(NOTE_ID);
-        p.edit().remove(KEY_ACTIVE).remove(KEY_START).remove(KEY_END).remove(KEY_MODE).remove(KEY_MUSIC).remove(KEY_POLICY_CHANGED).apply();
+        p.edit().remove(KEY_LABEL).remove(KEY_ACTIVE).remove(KEY_START).remove(KEY_END).remove(KEY_MODE).remove(KEY_MUSIC).remove(KEY_POLICY_CHANGED).apply();
+    }
+
+    /** Remember this run (name, start, real finish) in the list of the last five. */
+    private static void recordRun(SharedPreferences p) {
+        try {
+            long start = p.getLong(KEY_START, 0);
+            long planned = p.getLong(KEY_END, 0);
+            long now = System.currentTimeMillis();
+            long end = planned > 0 ? Math.min(now, planned) : now;
+            org.json.JSONObject o = new org.json.JSONObject();
+            o.put("name", p.getString(KEY_LABEL, "Timer"));
+            o.put("start", start);
+            o.put("end", end);
+            org.json.JSONArray old = new org.json.JSONArray(p.getString(KEY_HISTORY, "[]"));
+            org.json.JSONArray out = new org.json.JSONArray();
+            out.put(o);
+            for (int i = 0; i < old.length() && out.length() < 5; i++) {
+                out.put(old.get(i));
+            }
+            p.edit().putString(KEY_HISTORY, out.toString()).apply();
+        } catch (Exception ignored) {
+            // history is a nicety; never let it break stopping a timer
+        }
     }
 
     /** If a timer ran out while nothing was listening, finish it now. */
