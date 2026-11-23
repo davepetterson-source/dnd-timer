@@ -10,8 +10,22 @@ android {
         applicationId 'com.catstorm.dndtimer'
         minSdk 28
         targetSdk 34
-        versionCode 1
+        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
         versionName '1.0'
+    }
+
+    // Fixed signing key so every build installs as an update over the last one.
+    signingConfigs {
+        kipquiet {
+            storeFile file('kipquiet.keystore')
+            storePassword 'kipquiet'
+            keyAlias 'kipquiet'
+            keyPassword 'kipquiet'
+        }
+    }
+    buildTypes {
+        debug { signingConfig signingConfigs.kipquiet }
+        release { signingConfig signingConfigs.kipquiet }
     }
 
     compileOptions {
