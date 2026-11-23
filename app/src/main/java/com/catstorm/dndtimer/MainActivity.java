@@ -120,6 +120,8 @@ public class MainActivity extends Activity {
                 int mode = "silent".equals(o.optString("mode")) ? Dnd.SILENT : Dnd.DND;
                 int minutes = Math.max(1, o.optInt("minutes", 60));
                 boolean music = o.optBoolean("music", false);
+                // faves: true = starred contacts may call, false = no calls; missing = use my own Android settings
+                int calls = o.has("faves") ? (o.optBoolean("faves") ? 1 : 0) : -1;
                 long startAt = o.optLong("startMs", 0);
                 int startMin = o.optInt("startMin", -1);
                 int stIdx = startMin < 0 ? 0 : startMin / 15 + 1;
@@ -132,7 +134,7 @@ public class MainActivity extends Activity {
                         }
                     }
                 }
-                boolean ok = Dnd.start(MainActivity.this, mode, minutes, music, startAt, stIdx, mask);
+                boolean ok = Dnd.start(MainActivity.this, mode, minutes, music, calls, startAt, stIdx, mask);
                 if (ok) {
                     Dnd.prefs(MainActivity.this).edit().putInt("runMin", minutes).apply();
                 }

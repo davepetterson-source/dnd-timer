@@ -20,7 +20,7 @@ The page is shown inside a WebView (`MainActivity.java`). Interface changes = ed
 - Keep the connection to the engine. Search the script for `KipNative` and `bridge`:
   - `bridge.arm({mode, minutes, music, startMs, startMin, repeat})` calls `window.KipNative.arm(json)`.
     `mode` is "silent" or "dnd"; `startMs` 0 = start now; `startMin` is minutes after midnight (-1 = now);
-    `repeat` is seven Mon..Sun booleans. It returns `{"ok":true}` or `{"ok":false,"reason":"access"}`.
+    `repeat` is seven Mon..Sun booleans; `faves` is optional (see below). It returns `{"ok":true}` or `{"ok":false,"reason":"access"}`.
   - `bridge.disarm()` calls `window.KipNative.disarm()` (Stop / Cancel).
   - `bridge.state()` calls `window.KipNative.state()`. This is the real state (idle / running / scheduled).
     `render()` runs on a 250 ms timer and on resume, and the dial shows exactly what the engine says.
@@ -28,7 +28,7 @@ The page is shown inside a WebView (`MainActivity.java`). Interface changes = ed
 - Without `window.KipNative` (desktop browser) the page uses a pretend engine so it can be previewed.
 - Preset cards (Calm, Kip, Sleep, Focus) start straight away. The big green button schedules for the
   Starts time (starts now if that time is within a minute). Presets are kept in localStorage key `kipquiet-preview-presets-v28`.
-- "Favourite callers only" is display only: the engine does not support it yet.
+- `faves` (boolean, sent with preset starts) controls calls in Do Not Disturb: true = starred contacts may ring, false = no calls. The engine also allows alarms always and media only when `music` is true. If `faves` is missing (the big Start button) the engine uses the phone's own Do Not Disturb settings.
 
 ## Previewing without a phone
 
