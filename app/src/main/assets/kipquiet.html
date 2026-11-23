@@ -881,6 +881,7 @@ html,body{background:linear-gradient(160deg,#141e41,#0a1026 65%) fixed!important
   // Reuse existing approved star-phone and silenced-phone artwork.
   const favouriteCallMarkup=document.querySelector('[data-preset="kip"] .orb-call').innerHTML;
   const blockedCallMarkup=document.querySelector('[data-preset="sleep"] .orb-call').innerHTML;
+  const bellMarkup='<svg viewBox="0 0 80 80" aria-hidden="true"><path d="M40 10 C27 10 21 20 21 33 V45 L13 58 H67 L59 45 V33 C59 20 53 10 40 10 Z" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/><path d="M32 66 Q40 75 48 66" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path class="bell-slash" d="M8 71 L72 9" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/></svg>';
   const hide=(el,on)=>{if(on)el.style.setProperty('display','none','important');else el.style.removeProperty('display');};
   function redrawCards(){
     for(const key of keys){
@@ -891,7 +892,20 @@ html,body{background:linear-gradient(160deg,#141e41,#0a1026 65%) fixed!important
       const newSrc=iconUrls[conf.icon]||iconUrls[key];
       if(old){old.src=newSrc;old.classList.toggle('meeting-preset-art',conf.icon==='meeting');}
       // Status art stays the same; only lit/grey states change.
-      const indicators=btn.querySelectorAll('.preset-status .flat-indicator');
+      // Alarm bell: lit when alarms may sound, dim and slashed when they are blocked.
+      const statusBox=btn.querySelector('.preset-status');
+      let bell=statusBox.querySelector('.orb-alarm');
+      if(!bell){
+        bell=document.createElement('span');
+        bell.className='flat-indicator orb-alarm';
+        bell.innerHTML=bellMarkup;
+        statusBox.appendChild(bell);
+      }
+      const alarmsOn=conf.alarms!==false;
+      bell.classList.toggle('is-dim',!alarmsOn);
+      bell.querySelector('.bell-slash').style.display=alarmsOn?'none':'';
+      bell.title=alarmsOn?'Alarms can sound':'Alarms silenced';
+      const indicators=btn.querySelectorAll('.preset-status .flat-indicator:not(.orb-alarm)');
       if(indicators.length===3){
         const call=indicators[0],sound=indicators[1],musicIcon=indicators[2];
         const silent=conf.mode==='silent',favourites=conf.faves&&!silent;
