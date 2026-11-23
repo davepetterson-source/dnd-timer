@@ -50,6 +50,8 @@ final class Dnd {
     private static final String KEY_REP_MUSIC = "repMusic";
     private static final String KEY_REP_CALLS = "repCalls";
     static final String KEY_SCHED_CALLS = "schedCalls";
+    private static final String KEY_REP_ALARMS = "repAlarms";
+    static final String KEY_SCHED_ALARMS = "schedAlarms";
     static final String KEY_SCHED = "sched";
     static final String KEY_SCHED_START = "schedStart";
     static final String KEY_SCHED_MODE = "schedMode";
@@ -75,7 +77,7 @@ final class Dnd {
      * Starts a session now, or at startAt (a clock time in the future) if that is given.
      * minutes < 0 means "until I turn it off". False if DND access is not granted.
      */
-    static boolean start(Context c, int mode, int minutes, boolean music, int calls, long startAt, int stIdx, int repMask) {
+    static boolean start(Context c, int mode, int minutes, boolean music, int calls, int alarms, long startAt, int stIdx, int repMask) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (!nm.isNotificationPolicyAccessGranted()) {
             return false;
@@ -85,19 +87,19 @@ final class Dnd {
             SharedPreferences.Editor re = prefs(c).edit();
             if (repMask != 0) {
                 re.putInt(KEY_REP_MASK, repMask).putInt(KEY_REP_IDX, stIdx).putInt(KEY_REP_MODE, mode)
-                        .putInt(KEY_REP_MIN, minutes).putBoolean(KEY_REP_MUSIC, music).putInt(KEY_REP_CALLS, calls);
+                        .putInt(KEY_REP_MIN, minutes).putBoolean(KEY_REP_MUSIC, music).putInt(KEY_REP_CALLS, calls).putInt(KEY_REP_ALARMS, alarms);
             } else {
                 re.remove(KEY_REP_MASK);
             }
             re.apply();
             prefs(c).edit().putBoolean(KEY_SCHED, true).putLong(KEY_SCHED_START, startAt)
                     .putInt(KEY_SCHED_MODE, mode).putInt(KEY_SCHED_MIN, minutes)
-                    .putBoolean(KEY_SCHED_MUSIC, music).putInt(KEY_SCHED_CALLS, calls).apply();
+                    .putBoolean(KEY_SCHED_MUSIC, music).putInt(KEY_SCHED_CALLS, calls).putInt(KEY_SCHED_ALARMS, alarms).apply();
             schedule(c, startAt, pendingBegin(c));
             showNotification(c);
             return true;
         }
-        return activate(c, mode, minutes, music, calls);
+        return activate(c, mode, minutes, music, calls, alarms);
     }
 
     /** The scheduled start time has arrived: switch on for real. */
@@ -110,10 +112,11 @@ final class Dnd {
         int minutes = p.getInt(KEY_SCHED_MIN, 60);
         boolean music = p.getBoolean(KEY_SCHED_MUSIC, false);
         int calls = p.getInt(KEY_SCHED_CALLS, -1);
+        int alarms = p.getInt(KEY_SCHED_ALARMS, -1);
         clearScheduled(c);
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm.isNotificationPolicyAccessGranted()) {
-            activate(c, mode, minutes, music, calls);
+            activate(c, mode, minutes, music, calls, alarms);
         } else {
             nm.cancel(NOTE_ID);
         }
@@ -122,11 +125,12 @@ final class Dnd {
     private static void clearScheduled(Context c) {
         c.getSystemService(AlarmManager.class).cancel(pendingBegin(c));
         prefs(c).edit().remove(KEY_SCHED).remove(KEY_SCHED_START).remove(KEY_SCHED_MODE)
-                .remove(KEY_SCHED_MIN).remove(KEY_SCHED_MUSIC).remove(KEY_SCHED_CALLS).apply();
+                .remove(KEY_SCHED_MIN).remove(KEY_SCHED_MUSIC).remove(KEY_SCHED_CALLS).remove(KEY_SCHED_ALARMS).apply();
     }
 
-    /** calls: -1 = use my own Android settings, 0 = block all calls, 1 = starred contacts only. */
-    private static boolean activate(Context c, int mode, int minutes, boolean music, int calls) {
+    /** calls: -1 = use my own Android settings, 0 = block all calls, 1 = starred contacts only.
+     *  alarms: 0 = alarms silenced too, 1 = alarms allowed, -1 = default (allowed in Do Not Disturb, silenced in Silent). */
+    private static boolean activate(Context c, int mode, int minutes, boolean music, int calls, int alarms) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
 
         SharedPreferences p = prefs(c);
@@ -147,14 +151,18 @@ final class Dnd {
         }
 
         boolean explicit = mode == DND && calls >= 0;
-        boolean changePolicy = music || explicit;
+        boolean silentAlarms = mode == SILENT && alarms == 1;
+        boolean changePolicy = music || explicit || silentAlarms;
         if (changePolicy) {
             int cats = NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
             int callS = NotificationManager.Policy.PRIORITY_SENDERS_ANY;
             int msgs = NotificationManager.Policy.PRIORITY_SENDERS_ANY;
             int conv = 2; /* CONVERSATION_SENDERS_NONE */
-            if (explicit) {
-                cats = NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS;
+            if (mode == SILENT) {
+                cats = (music ? NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA : 0)
+                        | (alarms == 1 ? NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS : 0);
+            } else if (explicit) {
+                cats = alarms == 0 ? 0 : NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS;
                 if (music) {
                     cats |= NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
                 }
@@ -211,7 +219,8 @@ final class Dnd {
                     .putInt(KEY_SCHED_MODE, p.getInt(KEY_REP_MODE, DND))
                     .putInt(KEY_SCHED_MIN, p.getInt(KEY_REP_MIN, 60))
                     .putBoolean(KEY_SCHED_MUSIC, p.getBoolean(KEY_REP_MUSIC, false))
-                    .putInt(KEY_SCHED_CALLS, p.getInt(KEY_REP_CALLS, -1)).apply();
+                    .putInt(KEY_SCHED_CALLS, p.getInt(KEY_REP_CALLS, -1))
+                    .putInt(KEY_SCHED_ALARMS, p.getInt(KEY_REP_ALARMS, -1)).apply();
             schedule(c, at, pendingBegin(c));
             showNotification(c);
         }
