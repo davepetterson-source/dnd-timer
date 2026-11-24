@@ -1262,7 +1262,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     finishRef=ref;finishDrum.relabel(j=>fmtClock(ref+j*5));
   }
   const startLabels=['Now'].concat(Array.from({length:96},(_,i)=>fmtClock(i*15)));
-  const startDrum=Drum($('start-drum'),startLabels,{pitch:30,big:26,wrap:true,onChange:i=>{if(active)return;if(i===0)startNow=true;else{startNow=false;startMinutes=(i-1)*15;}applyStartMode();}});
+  const startDrum=Drum($('start-drum'),startLabels,{pitch:30,big:26,wrap:true,onChange:i=>{if(active)return;presetTimed=false;if(i===0)startNow=true;else{startNow=false;startMinutes=(i-1)*15;}applyStartMode();}});
   // 60 chunky segments, blue at the start shading to purple, draining as time runs out
   const ticksSvg=clockRoot.querySelector('.kq-ticks'),idleTicks=ticksSvg.innerHTML;
   const NS='http://www.w3.org/2000/svg';let segs=null;
@@ -1342,6 +1342,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
   }
   // ---------- render whatever the engine says ----------
   let phase='idle';
+  let presetTimed=false;
   function setLocked(on){
     document.body.classList.toggle('kq-locked',on);
     ['setup','repeat','start-wheel','finish-wheel'].map(id=>document.getElementById(id)).concat([document.querySelector('.presets'),document.querySelector('.modes')]).forEach(el=>{if(!el)return;if(on){el.setAttribute('inert','');el.setAttribute('aria-disabled','true');}else{el.removeAttribute('inert');el.removeAttribute('aria-disabled');}});
@@ -1352,6 +1353,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     if(!running&&!sched){
       if(phase!=='idle'){
         phase='idle';active=false;setLocked(false);
+        if(presetTimed){presetTimed=false;startNow=true;days=new Set();renderDays();applyStartMode();}
         $('dial-countdown').hidden=true;$('dial-countdown').replaceChildren();reels=null;
         durationDrum.style.display='';clockLabel.textContent='DURATION';clockRoot.classList.remove('is-counting');
         showTicks();setZz(false);
@@ -1437,7 +1439,8 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     selectedPreset=key;
     document.querySelectorAll('[data-preset]').forEach(b=>b.classList.toggle('selected-preset',b===el));
     const timed=conf.startNow===false;
-    if(timed){startNow=false;startMinutes=conf.startMin;days=new Set(conf.days||[]);renderDays();applyStartMode();}
+    presetTimed=timed;
+    if(timed){startNow=false;startMinutes=conf.startMin;days=new Set(conf.days||[]);renderDays();applyStartMode();}else{startNow=true;days=new Set();renderDays();applyStartMode();}
     redraw();
     const ok=bridge.arm({label:conf.name,startMs:timed?nextStartMs():0,minutes:Math.max(1,conf.hours*60+conf.minutes),mode:conf.mode,music:!!conf.music,faves:conf.mode==='dnd'&&!!conf.faves,alarms:conf.alarms!==false,startMin:timed?startMinutes:-1,repeat:timed?repeatArray():[false,false,false,false,false,false,false]});
     if(ok)sync();
@@ -1507,7 +1510,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     }
     configs[editorKey]={name,hours:eh,minutes:em,mode:editorMode,music:$('editor-music').checked,alarms:$('editor-alarms').checked,faves:editorMode==='dnd'&&$('editor-faves').checked,icon:editorIcon,startNow:edStartNow,startMin:edStartMin,days:[...edDays].sort((a,b)=>a-b)};
     persist();redrawCards();renderEditorTabs();
-    if(selectedPreset===editorKey&&!active){hours=eh;minutes=em;setMode(editorMode);startNow=edStartNow;startMinutes=edStartMin;days=new Set(edDays);renderDays();applyStartMode();redraw();}
+    if(selectedPreset===editorKey&&!active){hours=eh;minutes=em;setMode(editorMode);redraw();}
     showList();
   });
   $('editor-reset').addEventListener('click',()=>{
