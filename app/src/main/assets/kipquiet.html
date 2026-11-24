@@ -1009,8 +1009,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
   <label class="editor-check"><input type="checkbox" id="editor-faves"><span><b>Favourites</b><small>Starred contacts can ring; everyone else is blocked</small></span></label>
   </div>
   <div class="editor-actions"><button type="button" class="editor-save" id="editor-save">Save preset</button><button type="button" class="editor-reset" id="editor-reset">Reset preset</button></div>
-  <div class="editor-label hist-title">Recent runs</div><div id="history" role="list"></div>
-  <div class="editor-message" id="editor-message" role="status" aria-live="polite"></div>
+    <div class="editor-message" id="editor-message" role="status" aria-live="polite"></div>
   <div class="mock-note">Preview settings only. Phone sounds and calls are not changed.</div>
   </div>
 </div></div></main><script>
@@ -1463,6 +1462,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
   const dayWord=ts=>{const d=new Date(ts),n=new Date();const diff=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/86400000);return diff<=0?'':diff===1?'Yesterday ':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+' ';};
   let lastHist='';
   function renderHistory(n){
+    if(!$('history'))return;
     const rows=[];
     if(n&&n.phase==='running')rows.push({name:n.label||'Running now',start:n.startedAt,end:null});
     for(const x of (n&&n.history)||[])rows.push(x);
@@ -1628,6 +1628,10 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     const leg=document.createElement('div');leg.className='ed-legend';
     leg.innerHTML='<div class="ed-legend-title">What the symbols mean</div>'+rows.map(r=>'<div class="ed-legend-row"><span class="leg-ic">'+r[0]+'</span><span>'+r[1]+'</span></div>').join('');
     list.appendChild(leg);
+    let hb=$('hist-box');
+    if(!hb){hb=document.createElement('div');hb.id='hist-box';hb.className='ed-legend';hb.innerHTML='<div class="ed-legend-title">Recent runs</div><div id="history" role="list"></div>';}
+    list.appendChild(hb);
+    renderHistory(bridge.state());
   }
   function showList(){
     redrawCards();renderEdList();
