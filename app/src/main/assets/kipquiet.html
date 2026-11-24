@@ -1269,7 +1269,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
   $('start').addEventListener('click',()=>{
     if(phase!=='idle'){bridge.disarm();sync();return;}
     const mins=Math.max(1,hours*60+minutes);
-    const startMs=nextStartMs(),imminent=startNow||startMs-Date.now()<60000;
+    const startMs=nextStartMs(),imminent=startNow;
     const ok=bridge.arm({label:'Sleep timer',startMs:imminent?0:startMs,minutes:mins,mode,music:false,startMin:startNow?-1:startMinutes,repeat:startNow?[false,false,false,false,false,false,false]:repeatArray()});
     if(ok)sync();
   });
