@@ -951,7 +951,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
   function redraw(){
     if(typeof hoursDrum!=='undefined'){hoursDrum.setIndex(hours);minutesDrum.setIndex(Math.round(minutes/5)%12);}
     if(typeof finishDrum!=='undefined'){relabelFinish();finishDrum.setIndex(Math.round((hours*60+minutes)/5)%288);}
-    if(typeof startDrum!=='undefined')startDrum.setIndex(startNow?0:(Math.round(startMinutes/30)%48)+1);
+    if(typeof startDrum!=='undefined')startDrum.setIndex(startNow?0:(Math.round(startMinutes/15)%96)+1);
     $('start-day').textContent=startNow?'Starts immediately':dayName(nextStartMs());
     updateFinish();
   }
@@ -1115,8 +1115,8 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     if(ref===finishRef||finishDrum.isBusy())return;
     finishRef=ref;finishDrum.relabel(j=>fmtClock(ref+j*5));
   }
-  const startLabels=['Now'].concat(Array.from({length:48},(_,i)=>fmtClock(i*30)));
-  const startDrum=Drum($('start-drum'),startLabels,{pitch:30,big:26,wrap:true,onChange:i=>{if(active)return;if(i===0)startNow=true;else{startNow=false;startMinutes=(i-1)*30;}applyStartMode();}});
+  const startLabels=['Now'].concat(Array.from({length:96},(_,i)=>fmtClock(i*15)));
+  const startDrum=Drum($('start-drum'),startLabels,{pitch:30,big:26,wrap:true,onChange:i=>{if(active)return;if(i===0)startNow=true;else{startNow=false;startMinutes=(i-1)*15;}applyStartMode();}});
   // 60 chunky segments, blue at the start shading to purple, draining as time runs out
   const ticksSvg=clockRoot.querySelector('.kq-ticks'),idleTicks=ticksSvg.innerHTML;
   const NS='http://www.w3.org/2000/svg';let segs=null;
