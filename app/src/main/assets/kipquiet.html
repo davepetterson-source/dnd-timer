@@ -1020,7 +1020,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     for(const key of keys){
       const btn=document.querySelector(`[data-preset="${key}"]`),conf=configs[key];
       btn.querySelector('.title').textContent=conf.name;
-      btn.querySelector('.desc').textContent=conf.startNow===false?((conf.hours?conf.hours+'h':'')+(conf.hours&&conf.minutes?' ':'')+(conf.minutes?conf.minutes+'m':'')+' · '+fmtClock(conf.startMin)):durationText(conf);
+      btn.querySelector('.desc').textContent=conf.startNow===false?(fmtClock(conf.startMin)+' · '+(conf.hours?conf.hours+'h':'')+(conf.hours&&conf.minutes?' ':'')+(conf.minutes?conf.minutes+'m':'')):durationText(conf);
       const old=btn.querySelector('img');
       const newSrc=iconUrls[conf.icon]||iconUrls[key];
       if(old){old.src=newSrc;old.classList.toggle('meeting-preset-art',conf.icon==='meeting');}
@@ -1537,7 +1537,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
       [bellOn,'Alarms can sound'],
       [bellMarkup,'Alarms are silenced'],
       [muteSvg,'Silent mode: nothing gets through'],
-      ['<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 3"/></svg>','Start time. "8h \u00b7 22:00" means it runs for 8 hours, starting at 22:00. No time on a card means it starts as soon as you tap it.']
+      ['<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 3"/></svg>','Start time 22:00, running for 8 hours. A card with no time starts as soon as you tap it.']
     ];
     const leg=document.createElement('div');leg.className='ed-legend';
     leg.innerHTML='<div class="ed-legend-title">What the symbols mean</div>'+rows.map(r=>'<div class="ed-legend-row"><span class="leg-ic">'+r[0]+'</span><span>'+r[1]+'</span></div>').join('');
