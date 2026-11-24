@@ -1588,11 +1588,14 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     for(const id of ['settings-overlay','overlay']){const o=$(id);if(o&&o.classList.contains('open')){o.classList.remove('open');if(id==='overlay')renderDays();return true;}}
     return false;
   };
+  let fullH=window.innerHeight;
+  function typing(){const a=document.activeElement;return !!a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA');}
   function fit(){
     const p=document.querySelector('.phone'),h=790;
-    const k=Math.min(window.innerWidth/390,window.innerHeight/h);
+    if(!typing())fullH=window.innerHeight;
+    const k=Math.min(window.innerWidth/390,fullH/h);
     p.style.transform=`scale(${k})`;
-    p.style.top=Math.max(0,(window.innerHeight-h*k)/2)+'px';
+    p.style.top=Math.max(0,(fullH-h*k)/2)+'px';
     p.style.marginLeft=(-195)+'px';
   }
   window.addEventListener('resize',fit);fit();setTimeout(fit,300);
