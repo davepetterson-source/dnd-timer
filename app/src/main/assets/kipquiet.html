@@ -1353,7 +1353,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     if(!running&&!sched){
       if(phase!=='idle'){
         phase='idle';active=false;setLocked(false);
-        if(presetTimed){presetTimed=false;startNow=true;days=new Set();renderDays();applyStartMode();}
+        presetTimed=false;startNow=true;days=new Set();renderDays();applyStartMode();
         $('dial-countdown').hidden=true;$('dial-countdown').replaceChildren();reels=null;
         durationDrum.style.display='';clockLabel.textContent='DURATION';clockRoot.classList.remove('is-counting');
         showTicks();setZz(false);
