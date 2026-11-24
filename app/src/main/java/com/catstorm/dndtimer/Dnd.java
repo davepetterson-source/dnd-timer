@@ -397,11 +397,11 @@ final class Dnd {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    /** The "Sleep Timer active" entry in the pull-down bar: tap to open the app, or press End. */
+    /** The "KipQuiet active" entry in the pull-down bar: tap to open the app, or press End. */
     private static void showNotification(Context c) {
         SharedPreferences p = prefs(c);
         NotificationManager nm = c.getSystemService(NotificationManager.class);
-        NotificationChannel ch = new NotificationChannel(CHANNEL, "Sleep Timer running",
+        NotificationChannel ch = new NotificationChannel(CHANNEL, "KipQuiet running",
                 NotificationManager.IMPORTANCE_LOW);
         ch.setShowBadge(false);
         nm.createNotificationChannel(ch);
@@ -423,7 +423,7 @@ final class Dnd {
         SimpleDateFormat f = new SimpleDateFormat("HH:mm", Locale.getDefault());
         String what = (mode == SILENT ? "Silent" : "Do Not Disturb") + (music ? " + Music" : "");
         String endText = end == 0 ? "until you end it" : "ends " + f.format(new Date(end));
-        String title = scheduled ? "Sleep Timer scheduled" : "Sleep Timer active";
+        String title = scheduled ? "KipQuiet scheduled" : "KipQuiet active";
         String body = scheduled
                 ? what + "\nStarts " + f.format(new Date(start)) + " · " + endText
                 : what + "\n" + f.format(new Date(start)) + (end == 0 ? " · until you end it" : " to " + f.format(new Date(end)));
