@@ -55,6 +55,8 @@ final class Dnd {
     private static final String KEY_REP_LABEL = "repLabel";
     static final String KEY_SCHED_LABEL = "schedLabel";
     static final String KEY_LABEL = "runLabel";
+    static final String KEY_RUN_CALLS = "runCalls";
+    static final String KEY_RUN_ALARMS = "runAlarms";
     static final String KEY_HISTORY = "history";   // JSON array of the last runs, newest first
     static final String KEY_SCHED = "sched";
     static final String KEY_SCHED_START = "schedStart";
@@ -196,7 +198,7 @@ final class Dnd {
 
         long now = System.currentTimeMillis();
         long end = minutes < 0 ? 0 : now + minutes * 60_000L;
-        e.putBoolean(KEY_ACTIVE, true).putBoolean(KEY_MUSIC, music).putLong(KEY_START, now).putLong(KEY_END, end).putInt(KEY_MODE, mode).putString(KEY_LABEL, label);
+        e.putBoolean(KEY_ACTIVE, true).putBoolean(KEY_MUSIC, music).putLong(KEY_START, now).putLong(KEY_END, end).putInt(KEY_MODE, mode).putString(KEY_LABEL, label).putInt(KEY_RUN_CALLS, calls).putInt(KEY_RUN_ALARMS, alarms);
         e.apply();
 
         if (end != 0) {
@@ -272,7 +274,7 @@ final class Dnd {
         }
         c.getSystemService(AlarmManager.class).cancel(pending(c));
         nm.cancel(NOTE_ID);
-        p.edit().remove(KEY_LABEL).remove(KEY_ACTIVE).remove(KEY_START).remove(KEY_END).remove(KEY_MODE).remove(KEY_MUSIC).remove(KEY_POLICY_CHANGED).apply();
+        p.edit().remove(KEY_LABEL).remove(KEY_RUN_CALLS).remove(KEY_RUN_ALARMS).remove(KEY_ACTIVE).remove(KEY_START).remove(KEY_END).remove(KEY_MODE).remove(KEY_MUSIC).remove(KEY_POLICY_CHANGED).apply();
     }
 
     /** Remember this run (name, start, real finish) in the list of the last five. */

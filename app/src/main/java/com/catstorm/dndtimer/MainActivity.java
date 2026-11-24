@@ -168,6 +168,8 @@ public class MainActivity extends Activity {
                     o.put("mode", p.getInt(Dnd.KEY_MODE, Dnd.DND) == Dnd.SILENT ? "silent" : "dnd");
                     o.put("music", p.getBoolean("music", false));
                     o.put("label", p.getString(Dnd.KEY_LABEL, "Timer"));
+                    o.put("faves", p.getInt(Dnd.KEY_RUN_CALLS, -1));
+                    o.put("alarms", p.getInt(Dnd.KEY_RUN_ALARMS, -1));
                 } else if (p.getBoolean(Dnd.KEY_SCHED, false)) {
                     long at = p.getLong(Dnd.KEY_SCHED_START, 0);
                     int min = p.getInt(Dnd.KEY_SCHED_MIN, 60);
@@ -178,6 +180,8 @@ public class MainActivity extends Activity {
                     o.put("runDurationMin", min);
                     o.put("mode", p.getInt(Dnd.KEY_SCHED_MODE, Dnd.DND) == Dnd.SILENT ? "silent" : "dnd");
                     o.put("music", p.getBoolean(Dnd.KEY_SCHED_MUSIC, false));
+                    o.put("faves", p.getInt(Dnd.KEY_SCHED_CALLS, -1));
+                    o.put("alarms", p.getInt(Dnd.KEY_SCHED_ALARMS, -1));
                 } else {
                     o.put("phase", "idle");
                     o.put("startedAt", JSONObject.NULL);
