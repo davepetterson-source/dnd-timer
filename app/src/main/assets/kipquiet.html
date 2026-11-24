@@ -664,7 +664,7 @@
 .editor-top h2{margin:0;}
 .editor-close{background:#26375d;border:1px solid #7789b0;border-radius:10px;color:white;font-size:18px;width:34px;height:34px;cursor:pointer;}
 #settings-overlay p{margin:0 0 10px;}
-.editor-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0 12px;}
+.editor-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:8px 0 12px;}
 .editor-tabs button{padding:8px 2px;border-radius:10px;border:1px solid #637bab;background:#26375e;color:#e2eafa;cursor:pointer;font-size:12px;font-weight:700;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .editor-tabs button.chosen{border-color:#c2d7ff;background:linear-gradient(#5780c8,#34599b);box-shadow:inset 0 1px #fffa;}
 .editor-label{display:block;font-size:12px;font-weight:750;color:#e8efff;margin:9px 0 5px;}
@@ -850,12 +850,15 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
   <div class="editor-top"><h2>Preset setup</h2><button type="button" class="editor-close" id="settings-close" aria-label="Close setup">✕</button></div>
   <p>Choose a preset to edit. Changes are saved on this phone.</p>
   <div class="editor-tabs" id="editor-tabs" role="group" aria-label="Choose preset"></div>
+  <div id="editor-preset-fields">
   <label class="editor-label" for="editor-name">Name</label><input id="editor-name" maxlength="14" autocomplete="off" placeholder="Preset name" />
   <div class="editor-label">Icon</div><div class="editor-icons" id="editor-icons" role="group" aria-label="Choose icon"></div>
   <div class="editor-time"><div><div class="editor-label">Hours</div><div class="start-roller editor-roller" aria-label="Hours"><div id="editor-hours-drum"></div><div class="start-band"></div></div></div><div><div class="editor-label">Minutes</div><div class="start-roller editor-roller" aria-label="Minutes"><div id="editor-minutes-drum"></div><div class="start-band"></div></div></div></div>
   <div class="editor-label">Quiet mode</div><div class="editor-mode" id="editor-modes"><button type="button" data-editmode="dnd">Do Not Disturb</button><button type="button" data-editmode="silent">Silent</button></div>
+  </div>
   <label class="editor-check"><input type="checkbox" id="editor-music"><span><b>Allow music/media</b><small>Play music during this preset</small></span></label>
-  <label class="editor-check"><input type="checkbox" id="editor-alarms"><span><b>Allow alarms</b><small>Off means alarms stay silent during this preset</small></span></label>
+  <label class="editor-check"><input type="checkbox" id="editor-alarms"><span><b id="editor-alarms-title">Allow alarms</b><small id="editor-alarms-note">Off means alarms stay silent during this preset</small></span></label>
+  <label class="editor-check" id="editor-alarms-silent-row" style="display:none"><input type="checkbox" id="editor-alarms-silent"><span><b>Allow alarms in Silent</b><small>Off means Silent is completely silent, alarms included</small></span></label>
   <label class="editor-check"><input type="checkbox" id="editor-faves"><span><b>Favourite callers only</b><small>Starred contacts can ring; everyone else is blocked</small></span></label>
   <div class="editor-actions"><button type="button" class="editor-save" id="editor-save">Save preset</button><button type="button" class="editor-reset" id="editor-reset">Reset preset</button></div>
   <div class="editor-label hist-title">Recent runs</div><div id="history" role="list"></div>
@@ -889,6 +892,11 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     const saved=JSON.parse(localStorage.getItem('kipquiet-preview-presets-v28')||'{}');
     for(const key of keys) if(saved[key])configs[key]={...defaults[key],...saved[key]};
   }catch(_){/* Browser previews may disable storage */}
+  // One-off (bottom buttons) settings: used by the green Start button.
+  const ONEOFF_DEF={music:false,alarmsDnd:true,alarmsSilent:false,faves:true};
+  let oneoff={...ONEOFF_DEF};
+  try{Object.assign(oneoff,JSON.parse(localStorage.getItem('kipquiet-oneoff-v1')||'{}'));}catch(_){}
+  const persistOneoff=()=>{try{localStorage.setItem('kipquiet-oneoff-v1',JSON.stringify(oneoff));}catch(_){}};
   const persist=()=>{try{localStorage.setItem('kipquiet-preview-presets-v28',JSON.stringify(configs));}catch(_){}};
   let hours=1, minutes=30, days=new Set(), mode='dnd', startMinutes=23*60+30, startNow=true;
   let active=false, selectedPreset=null, countdownEnd=0,tickHandle=null;
@@ -1278,7 +1286,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     if(phase!=='idle'){bridge.disarm();sync();return;}
     const mins=Math.max(1,hours*60+minutes);
     const startMs=nextStartMs(),imminent=startNow;
-    const ok=bridge.arm({label:'Sleep timer',startMs:imminent?0:startMs,minutes:mins,mode,music:false,startMin:startNow?-1:startMinutes,repeat:startNow?[false,false,false,false,false,false,false]:repeatArray()});
+    const ok=bridge.arm({label:'Sleep timer',startMs:imminent?0:startMs,minutes:mins,mode,music:!!oneoff.music,faves:mode==='dnd'&&!!oneoff.faves,alarms:mode==='silent'?!!oneoff.alarmsSilent:oneoff.alarmsDnd!==false,startMin:startNow?-1:startMinutes,repeat:startNow?[false,false,false,false,false,false,false]:repeatArray()});
     if(ok)sync();
   });
   function applyStartMode(){
@@ -1304,6 +1312,10 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
       b.addEventListener('click',()=>{editorKey=key;renderEditor();});
       $('editor-tabs').appendChild(b);
     });
+    const ob=document.createElement('button');ob.type='button';ob.textContent='One-off';
+    ob.className=editorKey==='oneoff'?'chosen':'';
+    ob.addEventListener('click',()=>{editorKey='oneoff';renderEditor();});
+    $('editor-tabs').appendChild(ob);
   }
   function renderEditorIcons(){
     $('editor-icons').replaceChildren();
@@ -1318,22 +1330,34 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
   }
   function updateEditorMode(){
     document.querySelectorAll('[data-editmode]').forEach(b=>b.classList.toggle('chosen',b.dataset.editmode===editorMode));
-    const disabled=editorMode==='silent';
+    const disabled=editorKey!=='oneoff'&&editorMode==='silent';
     $('editor-faves').disabled=disabled;
     if(disabled)$('editor-faves').checked=false;
   }
   function renderEditor(){
+    const isOne=editorKey==='oneoff';
+    $('editor-preset-fields').style.display=isOne?'none':'';
+    $('editor-alarms-silent-row').style.display=isOne?'':'none';
+    $('editor-alarms-title').textContent=isOne?'Allow alarms in Do Not Disturb':'Allow alarms';
+    $('editor-alarms-note').textContent=isOne?'Off means alarms stay silent in Do Not Disturb':'Off means alarms stay silent during this preset';
+    $('editor-save').textContent=isOne?'Save one-off':'Save preset';
+    $('editor-reset').textContent=isOne?'Reset one-off':'Reset preset';
+    $('editor-message').textContent=isOne?'Applies to the Do Not Disturb and Silent buttons at the bottom of the home screen. Favourite callers only applies to Do Not Disturb.':'';
+    if(isOne){
+      $('editor-music').checked=!!oneoff.music;$('editor-alarms').checked=oneoff.alarmsDnd!==false;$('editor-alarms-silent').checked=!!oneoff.alarmsSilent;$('editor-faves').checked=!!oneoff.faves;
+      renderEditorTabs();updateEditorMode();return;
+    }
     const conf=configs[editorKey];editorMode=conf.mode;editorIcon=conf.icon;
     $('editor-name').value=conf.name;
     edHours=conf.hours;edMinutes=Math.round(conf.minutes/5)*5%60;edHoursDrum.setIndex(edHours);edMinutesDrum.setIndex(edMinutes/5);
     $('editor-music').checked=!!conf.music;
     $('editor-faves').checked=!!conf.faves;
     $('editor-alarms').checked=conf.alarms!==false;
-    $('editor-message').textContent='';
     renderEditorTabs();renderEditorIcons();updateEditorMode();
   }
   document.querySelectorAll('[data-editmode]').forEach(b=>b.addEventListener('click',()=>{editorMode=b.dataset.editmode;updateEditorMode();}));
   $('editor-save').addEventListener('click',()=>{
+    if(editorKey==='oneoff'){oneoff={music:$('editor-music').checked,alarmsDnd:$('editor-alarms').checked,alarmsSilent:$('editor-alarms-silent').checked,faves:$('editor-faves').checked};persistOneoff();$('settings-overlay').classList.remove('open');return;}
     const name=$('editor-name').value.trim();
     const eh=edHours,em=edMinutes;
     if(!name||!Number.isInteger(eh)||eh<0||eh>23||!Number.isInteger(em)||em<0||em>59||(eh===0&&em===0)){
@@ -1345,6 +1369,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     $('settings-overlay').classList.remove('open');
   });
   $('editor-reset').addEventListener('click',()=>{
+    if(editorKey==='oneoff'){oneoff={...ONEOFF_DEF};persistOneoff();renderEditor();$('editor-message').textContent='One-off settings reset.';return;}
     configs[editorKey]=copy(defaults[editorKey]);persist();redrawCards();renderEditor();$('editor-message').textContent='Preset reset to original.';
   });
   $('setup').addEventListener('click',()=>{renderEditor();$('settings-overlay').classList.add('open');});
