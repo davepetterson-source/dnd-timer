@@ -1617,7 +1617,7 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
     configs[editorKey]={name,hours:eh,minutes:em,mode:editorMode,music:$('editor-music').checked,alarms:$('editor-alarms').checked,faves:editorMode==='dnd'&&$('editor-faves').checked,icon:editorIcon,startNow:edStartNow,startMin:edStartMin,days:[...edDays].sort((a,b)=>a-b)};
     persist();redrawCards();renderEditorTabs();
     if(selectedPreset===editorKey&&!active){hours=eh;minutes=em;setMode(editorMode);redraw();}
-    showList();
+    $('settings-overlay').classList.remove('open');renderDays();
   });
   $('editor-reset').addEventListener('click',()=>{
     if(editorKey==='oneoff'){oneoff={...ONEOFF_DEF};persistOneoff();renderEditor();$('editor-message').textContent='Reset to the original settings.';return;}
@@ -1693,7 +1693,10 @@ body.kq-locked #setup,body.kq-locked .presets,body.kq-locked #start-wheel,body.k
   $('editor-back').addEventListener('click',showList);
   $('setup').addEventListener('click',()=>{showList();$('settings-overlay').classList.add('open');});
   $('settings-close').addEventListener('click',()=>{$('settings-overlay').classList.remove('open');});
-  $('settings-overlay').addEventListener('click',e=>{if(e.target===$('settings-overlay'))$('settings-overlay').classList.remove('open');});
+  // Only close Setup when the press started AND ended on the dark backdrop (a tap that lands there after Save redraws doesn't count)
+  let backdropDown=false;
+  $('settings-overlay').addEventListener('pointerdown',e=>{backdropDown=e.target===$('settings-overlay');});
+  $('settings-overlay').addEventListener('click',e=>{if(e.target===$('settings-overlay')&&backdropDown)$('settings-overlay').classList.remove('open');backdropDown=false;});
   redrawCards();renderDays();setMode(mode);redraw();
   window.__kqBack=function(){
     for(const id of ['settings-overlay','overlay']){const o=$(id);if(o&&o.classList.contains('open')){o.classList.remove('open');if(id==='overlay')renderDays();return true;}}
