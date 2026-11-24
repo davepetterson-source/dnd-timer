@@ -423,8 +423,8 @@ final class Dnd {
 
         SimpleDateFormat f = new SimpleDateFormat("HH:mm", Locale.getDefault());
         String what = (mode == SILENT ? "Silent" : "Do Not Disturb") + (music ? " + Music" : "");
-        String endText = end == 0 ? "until you end it" : "ends " + f.format(new Date(end));
-        String title = scheduled ? "KipQuiet scheduled" : "KipQuiet active";
+        String endText = end == 0 ? "until you end it" : "Ends " + f.format(new Date(end));
+        String title = scheduled ? "KipQuiet Scheduled" : "KipQuiet Active";
         String body = scheduled
                 ? what + "\nStarts " + f.format(new Date(start)) + " · " + endText
                 : what + "\n" + f.format(new Date(start)) + (end == 0 ? " · until you end it" : " to " + f.format(new Date(end)));
