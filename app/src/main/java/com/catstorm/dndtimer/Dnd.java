@@ -64,7 +64,7 @@ final class Dnd {
     static final String KEY_SCHED_MODE = "schedMode";
     static final String KEY_SCHED_MIN = "schedMin";
     static final String KEY_SCHED_MUSIC = "schedMusic";
-    private static final String CHANNEL = "running";
+    private static final String CHANNEL = "kipquiet_running";
     private static final int NOTE_ID = 1;
 
     private static final String KEY_PREV_FILTER = "pf";
@@ -404,6 +404,7 @@ final class Dnd {
         NotificationChannel ch = new NotificationChannel(CHANNEL, "KipQuiet running",
                 NotificationManager.IMPORTANCE_LOW);
         ch.setShowBadge(false);
+        nm.deleteNotificationChannel("running");
         nm.createNotificationChannel(ch);
 
         boolean scheduled = p.getBoolean(KEY_SCHED, false);
