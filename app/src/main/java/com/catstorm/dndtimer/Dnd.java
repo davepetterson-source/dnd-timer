@@ -44,6 +44,7 @@ final class Dnd {
     private static final String KEY_POLICY_CHANGED = "ppc";
     private static final String KEY_MUSIC = "music";
     static final String KEY_REP_MASK = "repMask";   // days of the week, bit 0 = Monday ... bit 6 = Sunday
+    static final String KEY_REP_HELD = "repHeld";   // a one-off is using the slot; the repeat comes back when it ends
     private static final String KEY_REP_IDX = "repIdx";
     private static final String KEY_REP_MODE = "repMode";
     private static final String KEY_REP_MIN = "repMin";
@@ -89,11 +90,15 @@ final class Dnd {
             return false;
         }
         expireIfDue(c);
+        boolean repeatWaiting = prefs(c).getInt(KEY_REP_MASK, 0) != 0;
         if (startAt > System.currentTimeMillis() + 1000) {
             SharedPreferences.Editor re = prefs(c).edit();
             if (repMask != 0) {
                 re.putInt(KEY_REP_MASK, repMask).putInt(KEY_REP_IDX, stIdx).putInt(KEY_REP_MODE, mode)
-                        .putInt(KEY_REP_MIN, minutes).putBoolean(KEY_REP_MUSIC, music).putInt(KEY_REP_CALLS, calls).putInt(KEY_REP_ALARMS, alarms).putString(KEY_REP_LABEL, label);
+                        .putInt(KEY_REP_MIN, minutes).putBoolean(KEY_REP_MUSIC, music).putInt(KEY_REP_CALLS, calls).putInt(KEY_REP_ALARMS, alarms).putString(KEY_REP_LABEL, label)
+                        .remove(KEY_REP_HELD);
+            } else if (repeatWaiting) {
+                re.putBoolean(KEY_REP_HELD, true);   // a one-off pauses the repeat; it resumes afterwards
             } else {
                 re.remove(KEY_REP_MASK);
             }
@@ -105,6 +110,16 @@ final class Dnd {
             showNotification(c);
             return true;
         }
+        SharedPreferences.Editor ie = prefs(c).edit();
+        if (repMask != 0) {
+            ie.putInt(KEY_REP_MASK, repMask).putInt(KEY_REP_IDX, stIdx).putInt(KEY_REP_MODE, mode)
+                    .putInt(KEY_REP_MIN, minutes).putBoolean(KEY_REP_MUSIC, music).putInt(KEY_REP_CALLS, calls).putInt(KEY_REP_ALARMS, alarms).putString(KEY_REP_LABEL, label)
+                    .remove(KEY_REP_HELD);
+        } else if (repeatWaiting) {
+            ie.putBoolean(KEY_REP_HELD, true);
+        }
+        ie.apply();
+        clearScheduled(c);   // a waiting repeat must not start in the middle of this run
         return activate(c, mode, minutes, music, calls, alarms, label);
     }
 
@@ -210,14 +225,28 @@ final class Dnd {
 
     /** The user ended or cancelled it: put everything back and stop any repeating too. */
     static void stop(Context c) {
-        prefs(c).edit().remove(KEY_REP_MASK).apply();
-        stopCore(c);
+        SharedPreferences p = prefs(c);
+        boolean held = p.getBoolean(KEY_REP_HELD, false) && p.getInt(KEY_REP_MASK, 0) != 0;
+        if (held) {
+            // it was only a one-off pausing a repeat: put the repeat back
+            stopCore(c);
+            resumeRepeat(c);
+        } else {
+            p.edit().remove(KEY_REP_MASK).remove(KEY_REP_HELD).apply();
+            stopCore(c);
+        }
     }
 
     /** The timer ran out by itself: put everything back, and line up the next repeat if there is one. */
     static void finish(Context c) {
         stopCore(c);
+        resumeRepeat(c);
+    }
+
+    /** Line up the next start of the stored repeat, if there is one. */
+    private static void resumeRepeat(Context c) {
         SharedPreferences p = prefs(c);
+        p.edit().remove(KEY_REP_HELD).apply();
         int mask = p.getInt(KEY_REP_MASK, 0);
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (mask != 0 && nm.isNotificationPolicyAccessGranted()) {

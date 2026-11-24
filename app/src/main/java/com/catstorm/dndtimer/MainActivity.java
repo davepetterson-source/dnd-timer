@@ -182,6 +182,10 @@ public class MainActivity extends Activity {
                     o.put("music", p.getBoolean(Dnd.KEY_SCHED_MUSIC, false));
                     o.put("faves", p.getInt(Dnd.KEY_SCHED_CALLS, -1));
                     o.put("alarms", p.getInt(Dnd.KEY_SCHED_ALARMS, -1));
+                    int repMask = p.getInt(Dnd.KEY_REP_MASK, 0);
+                    o.put("repWait", repMask != 0 && !p.getBoolean(Dnd.KEY_REP_HELD, false));
+                    o.put("repMask", repMask);
+                    o.put("repLabel", p.getString(Dnd.KEY_SCHED_LABEL, "Timer"));
                 } else {
                     o.put("phase", "idle");
                     o.put("startedAt", JSONObject.NULL);
