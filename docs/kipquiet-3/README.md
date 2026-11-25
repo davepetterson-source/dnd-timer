@@ -1,0 +1,7 @@
+# KipQuiet 3 — handover (25 November 2026)
+
+Recommended baseline: `KipQuiet_Setup_v2.html`. Latest experiment: `KipQuiet_Setup_GlossyIcons.html` (new illustrations rejected by user). The HTML and raster artwork are in the separate conversation backup archive `KipQuiet-3-backup.zip`; they have not yet been uploaded to this repository. Upload/extract the archive here before continuing.
+
+Requirements: no SVG, no flattened screenshot UI. Preserve moonlit lake scenery and glossy square preset tiles with independent artwork, colour, text and status icons. Three interactive barrels: continuous duration in five-minute increments, delayed start, synchronized finish. Balanced side flares with a dark gap from the selection band. Animated 60-segment clock fills clockwise when idle, extinguishes anticlockwise during countdown. Weekly schedules with selected weekdays, no start/end dates. Glossy preset editor with selected tile outlined and others dimmed, name, artwork, colour, muted/favourites/alarms/music, rolling duration. Two rows of five artwork choices. Retain original polished screwdriver but remove embedded title; add recognizable cross-legged meditator, hospital, dentist, doctor; retain lotus as an option. The latest simple line-art experiments are not approved.
+
+Native Android integration remains necessary for actual quiet-mode control and background schedules. Preserve main branch.
