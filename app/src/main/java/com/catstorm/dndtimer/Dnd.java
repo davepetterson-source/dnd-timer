@@ -66,7 +66,9 @@ final class Dnd {
     static final String KEY_SCHED_MUSIC = "schedMusic";
     static final String KEY_SCHEDS = "schedList";      // JSON array of the repeating schedules from the page
     static final String KEY_SCHED_AUTO = "schedAuto";  // the waiting start came from that list
-    private static final String KEY_SKIP = "schedSkip";   // start time the user cancelled; the list picks the next one
+    private static final String KEY_SKIP = "schedSkip";
+    static final String KEY_SCHED_ONCE = "schedOnce";   // key of a one-off schedule waiting in the slot
+    static final String KEY_DONE = "schedDone";         // one-off schedules that have run; the page switches them off   // start time the user cancelled; the list picks the next one
     private static final String CHANNEL = "kipquiet_running";
     private static final int NOTE_ID = 1;
 
@@ -138,6 +140,7 @@ final class Dnd {
         int calls = p.getInt(KEY_SCHED_CALLS, -1);
         int alarms = p.getInt(KEY_SCHED_ALARMS, -1);
         String label = p.getString(KEY_SCHED_LABEL, "Timer");
+        markOnceDone(c);
         clearScheduled(c);
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm.isNotificationPolicyAccessGranted()) {
@@ -150,7 +153,7 @@ final class Dnd {
     private static void clearScheduled(Context c) {
         c.getSystemService(AlarmManager.class).cancel(pendingBegin(c));
         prefs(c).edit().remove(KEY_SCHED).remove(KEY_SCHED_START).remove(KEY_SCHED_MODE)
-                .remove(KEY_SCHED_MIN).remove(KEY_SCHED_MUSIC).remove(KEY_SCHED_CALLS).remove(KEY_SCHED_ALARMS).remove(KEY_SCHED_LABEL).remove(KEY_SCHED_AUTO).apply();
+                .remove(KEY_SCHED_MIN).remove(KEY_SCHED_MUSIC).remove(KEY_SCHED_CALLS).remove(KEY_SCHED_ALARMS).remove(KEY_SCHED_LABEL).remove(KEY_SCHED_AUTO).remove(KEY_SCHED_ONCE).apply();
     }
 
     /** calls: -1 = use my own Android settings, 0 = block all calls, 1 = starred contacts only.
@@ -231,6 +234,7 @@ final class Dnd {
         SharedPreferences p = prefs(c);
         if (!p.getBoolean(KEY_ACTIVE, false) && p.getBoolean(KEY_SCHED, false) && p.getBoolean(KEY_SCHED_AUTO, false)) {
             p.edit().putLong(KEY_SKIP, p.getLong(KEY_SCHED_START, 0)).apply();   // cancelled one night only
+            markOnceDone(c);
         }
         stopInner(c);
         rearmList(c, true);
@@ -409,9 +413,37 @@ final class Dnd {
         p.edit().putBoolean(KEY_SCHED, true).putBoolean(KEY_SCHED_AUTO, true).putLong(KEY_SCHED_START, bestAt)
                 .putInt(KEY_SCHED_MODE, DND).putInt(KEY_SCHED_MIN, Math.max(1, best.optInt("duration", 60)))
                 .putBoolean(KEY_SCHED_MUSIC, music).putInt(KEY_SCHED_CALLS, faves ? 1 : 0).putInt(KEY_SCHED_ALARMS, alarms ? 1 : 0)
-                .putString(KEY_SCHED_LABEL, best.optString("name", "Quiet Time")).apply();
+                .putString(KEY_SCHED_LABEL, best.optString("name", "Quiet Time"))
+                .putString(KEY_SCHED_ONCE, "once".equals(best.optString("repeat")) ? scheduleKey(best) : "").apply();
         schedule(c, bestAt, pendingBegin(c));
         showNotification(c);
+    }
+
+    static String scheduleKey(org.json.JSONObject o) {
+        return o.optString("name") + "|" + o.optInt("hour") + "|" + o.optInt("minute") + "|" + o.optInt("duration");
+    }
+
+    /** A one-off schedule has started (or was cancelled): switch it off here and tell the page to do the same. */
+    private static void markOnceDone(Context c) {
+        SharedPreferences p = prefs(c);
+        String key = p.getString(KEY_SCHED_ONCE, "");
+        if (key.isEmpty()) {
+            return;
+        }
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(p.getString(KEY_SCHEDS, "[]"));
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject o = arr.getJSONObject(i);
+                if ("once".equals(o.optString("repeat")) && o.optBoolean("enabled", true) && key.equals(scheduleKey(o))) {
+                    o.put("enabled", false);
+                }
+            }
+            org.json.JSONArray done = new org.json.JSONArray(p.getString(KEY_DONE, "[]"));
+            done.put(key);
+            p.edit().putString(KEY_SCHEDS, arr.toString()).putString(KEY_DONE, done.toString()).apply();
+        } catch (Exception ignored) {
+            // worst case the one-off stays on; never break starting
+        }
     }
 
     /** Next time after base that this schedule starts (page days: 0 = Sunday ... 6 = Saturday), or 0. */

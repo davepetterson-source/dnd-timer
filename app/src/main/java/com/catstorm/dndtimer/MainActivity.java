@@ -158,6 +158,11 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void ackDone() {
+            Dnd.prefs(MainActivity.this).edit().remove(Dnd.KEY_DONE).apply();
+        }
+
+        @JavascriptInterface
         public void requestAccess() {
             runOnUiThread(() -> {
                 Toast.makeText(MainActivity.this,
@@ -214,6 +219,7 @@ public class MainActivity extends Activity {
                     o.put("scheduledFor", JSONObject.NULL);
                     o.put("endsAt", JSONObject.NULL);
                 }
+                o.put("done", new org.json.JSONArray(p.getString(Dnd.KEY_DONE, "[]")));
                 o.put("history", new org.json.JSONArray(p.getString(Dnd.KEY_HISTORY, "[]")));
                 return o.toString();
             } catch (Exception e) {
