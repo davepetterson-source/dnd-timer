@@ -441,7 +441,7 @@ body{min-height:100dvh;background:none!important;}
    Without KipNative (desktop preview) nothing here runs and the page behaves as before. */
 (()=>{
   const NK=window.KipNative; if(!NK) return;
-  const call=(f,a)=>{try{return JSON.parse(NK[f](a===undefined?undefined:JSON.stringify(a)))}catch(_){return null}};
+  const call=(f,a)=>{try{return JSON.parse(a===undefined?NK[f]():NK[f](JSON.stringify(a)))}catch(_){return null}};
   const toggles=()=>[...document.querySelectorAll('.timerpanel .toggle')].map(b=>b.getAttribute('aria-pressed')==='true');
   let nativeSeen=false, armedEnds=0, busy=false;
   function payload(){
