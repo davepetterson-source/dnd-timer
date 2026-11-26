@@ -64,6 +64,9 @@ final class Dnd {
     static final String KEY_SCHED_MODE = "schedMode";
     static final String KEY_SCHED_MIN = "schedMin";
     static final String KEY_SCHED_MUSIC = "schedMusic";
+    static final String KEY_SCHEDS = "schedList";      // JSON array of the repeating schedules from the page
+    static final String KEY_SCHED_AUTO = "schedAuto";  // the waiting start came from that list
+    private static final String KEY_SKIP = "schedSkip";   // start time the user cancelled; the list picks the next one
     private static final String CHANNEL = "kipquiet_running";
     private static final int NOTE_ID = 1;
 
@@ -147,7 +150,7 @@ final class Dnd {
     private static void clearScheduled(Context c) {
         c.getSystemService(AlarmManager.class).cancel(pendingBegin(c));
         prefs(c).edit().remove(KEY_SCHED).remove(KEY_SCHED_START).remove(KEY_SCHED_MODE)
-                .remove(KEY_SCHED_MIN).remove(KEY_SCHED_MUSIC).remove(KEY_SCHED_CALLS).remove(KEY_SCHED_ALARMS).remove(KEY_SCHED_LABEL).apply();
+                .remove(KEY_SCHED_MIN).remove(KEY_SCHED_MUSIC).remove(KEY_SCHED_CALLS).remove(KEY_SCHED_ALARMS).remove(KEY_SCHED_LABEL).remove(KEY_SCHED_AUTO).apply();
     }
 
     /** calls: -1 = use my own Android settings, 0 = block all calls, 1 = starred contacts only.
@@ -226,6 +229,15 @@ final class Dnd {
     /** The user ended or cancelled it: put everything back and stop any repeating too. */
     static void stop(Context c) {
         SharedPreferences p = prefs(c);
+        if (!p.getBoolean(KEY_ACTIVE, false) && p.getBoolean(KEY_SCHED, false) && p.getBoolean(KEY_SCHED_AUTO, false)) {
+            p.edit().putLong(KEY_SKIP, p.getLong(KEY_SCHED_START, 0)).apply();   // cancelled one night only
+        }
+        stopInner(c);
+        rearmList(c, true);
+    }
+
+    private static void stopInner(Context c) {
+        SharedPreferences p = prefs(c);
         boolean held = p.getBoolean(KEY_REP_HELD, false) && p.getInt(KEY_REP_MASK, 0) != 0;
         if (held) {
             // it was only a one-off pausing a repeat: put the repeat back
@@ -241,6 +253,7 @@ final class Dnd {
     static void finish(Context c) {
         stopCore(c);
         resumeRepeat(c);
+        rearmList(c, true);
     }
 
     /** Line up the next start of the stored repeat, if there is one. */
@@ -339,6 +352,90 @@ final class Dnd {
         if (p.getBoolean(KEY_ACTIVE, false) && end != 0 && end <= System.currentTimeMillis()) {
             finish(c);
         }
+        rearmList(c, false);
+    }
+
+    /** The page hands over its list of repeating schedules; the phone then starts them by itself. */
+    static void setSchedules(Context c, String json) {
+        prefs(c).edit().putString(KEY_SCHEDS, json).remove(KEY_SKIP).apply();
+        rearmList(c, true);
+    }
+
+    /** Put the soonest enabled schedule in the waiting slot (only when nothing else is running or waiting). */
+    static void rearmList(Context c, boolean force) {
+        SharedPreferences p = prefs(c);
+        if (p.getBoolean(KEY_ACTIVE, false)) {
+            return;
+        }
+        boolean waiting = p.getBoolean(KEY_SCHED, false);
+        boolean auto = p.getBoolean(KEY_SCHED_AUTO, false);
+        if (waiting && (!auto || !force)) {
+            return;
+        }
+        if (!force && !p.contains(KEY_SCHEDS)) {
+            return;
+        }
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        org.json.JSONObject best = null;
+        long bestAt = 0;
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(p.getString(KEY_SCHEDS, "[]"));
+            long base = Math.max(System.currentTimeMillis(), p.getLong(KEY_SKIP, 0));
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject o = arr.getJSONObject(i);
+                if (!o.optBoolean("enabled", true)) {
+                    continue;
+                }
+                long at = nextOccurrence(o, base);
+                if (at > 0 && (best == null || at < bestAt)) {
+                    best = o;
+                    bestAt = at;
+                }
+            }
+        } catch (Exception ignored) {
+            best = null;
+        }
+        if (best == null || !nm.isNotificationPolicyAccessGranted()) {
+            if (auto) {
+                clearScheduled(c);
+                nm.cancel(NOTE_ID);
+            }
+            return;
+        }
+        org.json.JSONArray fl = best.optJSONArray("flags");
+        boolean faves = fl == null || fl.optBoolean(0, true);
+        boolean alarms = fl == null || fl.optBoolean(1, true);
+        boolean music = fl == null || fl.optBoolean(2, true);
+        p.edit().putBoolean(KEY_SCHED, true).putBoolean(KEY_SCHED_AUTO, true).putLong(KEY_SCHED_START, bestAt)
+                .putInt(KEY_SCHED_MODE, DND).putInt(KEY_SCHED_MIN, Math.max(1, best.optInt("duration", 60)))
+                .putBoolean(KEY_SCHED_MUSIC, music).putInt(KEY_SCHED_CALLS, faves ? 1 : 0).putInt(KEY_SCHED_ALARMS, alarms ? 1 : 0)
+                .putString(KEY_SCHED_LABEL, best.optString("name", "Quiet Time")).apply();
+        schedule(c, bestAt, pendingBegin(c));
+        showNotification(c);
+    }
+
+    /** Next time after base that this schedule starts (page days: 0 = Sunday ... 6 = Saturday), or 0. */
+    static long nextOccurrence(org.json.JSONObject o, long base) {
+        boolean daily = "daily".equals(o.optString("repeat"));
+        org.json.JSONArray days = o.optJSONArray("days");
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        for (int k = 0; k < 15; k++) {
+            c.setTimeInMillis(base);
+            c.add(java.util.Calendar.DAY_OF_YEAR, k);
+            c.set(java.util.Calendar.HOUR_OF_DAY, o.optInt("hour", 22));
+            c.set(java.util.Calendar.MINUTE, o.optInt("minute", 0));
+            c.set(java.util.Calendar.SECOND, 0);
+            c.set(java.util.Calendar.MILLISECOND, 0);
+            int wd = c.get(java.util.Calendar.DAY_OF_WEEK) - 1;
+            boolean ok = daily;
+            for (int i = 0; !ok && days != null && i < days.length(); i++) {
+                ok = days.optInt(i, -1) == wd;
+            }
+            if (ok && c.getTimeInMillis() > base) {
+                return c.getTimeInMillis();
+            }
+        }
+        return 0;
     }
 
     /** After a reboot the alarm is gone: re-arm it, or finish the timer if it already ended. */
@@ -355,6 +452,7 @@ final class Dnd {
         }
         p = prefs(c);
         if (!p.getBoolean(KEY_ACTIVE, false)) {
+            rearmList(c, true);
             return;
         }
         long end = p.getLong(KEY_END, 0);

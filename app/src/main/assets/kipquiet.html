@@ -465,7 +465,7 @@ body{min-height:100dvh;background:none!important;}
     if(busy) return; busy=true;
     try{
       const now=Date.now(), st=call('state'); if(!st) return;
-      const local=ends>now, nat=st.phase==='running'||st.phase==='scheduled';
+      const local=ends>now, nat=st.phase==='running'||(st.phase==='scheduled'&&!st.auto);
       if(local&&!nat){
         if(nativeSeen) clearLocal();            // ended or stopped on the phone/notification
         else arm();                              // started in the page (Start button or a schedule)
@@ -473,6 +473,7 @@ body{min-height:100dvh;background:none!important;}
         const b=st.phase==='running'?st.startedAt:st.scheduledFor;
         begins=b;ends=st.endsAt;duration=st.runDurationMin||duration;
         if(st.label&&st.label!=='Timer')preset=st.label;
+        if(st.phase==='running'){const want=[st.faves===1,st.alarms!==0,!!st.music];[...document.querySelectorAll('.timerpanel .toggle')].forEach((b,j)=>{if(want[j]!==(b.getAttribute('aria-pressed')==='true'))b.click()});}
         nativeSeen=true;armedEnds=ends;button();
       }else if(local&&nat){
         nativeSeen=true;
@@ -482,6 +483,19 @@ body{min-height:100dvh;background:none!important;}
       }else nativeSeen=false;
     } finally { busy=false; }
   }
+  /* Hand the schedule list to the phone so it can start them itself, even with the app closed. */
+  let lastSent=null;
+  function syncSchedules(){
+    let j; try{j=localStorage.getItem('kipSchedulesV2')||'[]'}catch(_){return}
+    if(j===lastSent) return;
+    const first=lastSent===null; lastSent=j;
+    try{
+      const r=JSON.parse(NK.setSchedules(j));
+      if(!first&&r&&r.ok===false&&r.reason==='access'&&JSON.parse(j).some(x=>x.enabled!==false)) NK.requestAccess();
+    }catch(_){}
+  }
+  setInterval(syncSchedules,1000);
+  syncSchedules();
   const startBtn=document.getElementById('start');
   const prev=startBtn.onclick;
   startBtn.onclick=function(){

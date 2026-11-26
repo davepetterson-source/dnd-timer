@@ -147,6 +147,27 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public String setSchedules(String json) {
+            try {
+                Dnd.setSchedules(MainActivity.this, json);
+                NotificationManager nm = getSystemService(NotificationManager.class);
+                return nm.isNotificationPolicyAccessGranted() ? "{\"ok\":true}" : "{\"ok\":false,\"reason\":\"access\"}";
+            } catch (Exception e) {
+                return "{\"ok\":false}";
+            }
+        }
+
+        @JavascriptInterface
+        public void requestAccess() {
+            runOnUiThread(() -> {
+                Toast.makeText(MainActivity.this,
+                        "Switch on “KipQuiet” under Do Not Disturb access so schedules can run",
+                        Toast.LENGTH_LONG).show();
+                startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+            });
+        }
+
+        @JavascriptInterface
         public void disarm() {
             Dnd.stop(MainActivity.this);
         }
@@ -174,6 +195,7 @@ public class MainActivity extends Activity {
                     long at = p.getLong(Dnd.KEY_SCHED_START, 0);
                     int min = p.getInt(Dnd.KEY_SCHED_MIN, 60);
                     o.put("phase", "scheduled");
+                    o.put("auto", p.getBoolean(Dnd.KEY_SCHED_AUTO, false));
                     o.put("startedAt", JSONObject.NULL);
                     o.put("scheduledFor", at);
                     o.put("endsAt", at + min * 60_000L);
