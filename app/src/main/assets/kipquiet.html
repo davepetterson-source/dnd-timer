@@ -494,4 +494,8 @@ body{min-height:100dvh;background:none!important;}
   reconcile();
 })();
 </script>
+<script>
+/* The cog opens Preset Setup directly (Manage Schedules stays on the Next Schedule bar). */
+document.getElementById('settingsBtn').onclick=()=>document.getElementById('menuPresets').onclick();
+</script>
 </html>
