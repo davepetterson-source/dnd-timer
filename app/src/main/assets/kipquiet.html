@@ -528,4 +528,17 @@ document.getElementById('settingsBtn').onclick=()=>document.getElementById('menu
   all();
 })();
 </script>
+<style>
+#presetEditor .setup-barrel{height:80px}
+#presetEditor .swatches{flex-wrap:nowrap!important;gap:6px!important;margin-top:9px}
+#presetEditor .swatches>span{flex:none;margin-right:2px}
+#presetEditor .swatch{width:25px!important;height:25px!important}
+#presetEditor .entry #iconPickBtn{flex:none;width:48px!important;min-height:48px!important;height:48px;margin:0!important;padding:0!important;gap:0!important}
+#presetEditor .entry #iconPickBtn>span:last-child{display:none}
+#presetEditor .entry #iconPickThumb{width:38px!important;height:38px!important}
+</style>
+<script>
+(function(){const b=document.getElementById('iconPickBtn'),n=document.getElementById('setupName');
+ if(b&&n&&n.parentElement){n.parentElement.appendChild(b);b.setAttribute('aria-label','Choose icon');b.title='Choose icon'}})();
+</script>
 </html>
