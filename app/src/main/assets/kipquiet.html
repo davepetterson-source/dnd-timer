@@ -625,4 +625,6 @@ main.app button#next.mobilebar:has(.next-details:not([hidden])) .copy{padding-ri
 <script>(function(){const m=document.getElementById('scStart').closest('.setup-section');m.classList.add('sc-main');
 const caps=m.querySelectorAll(':scope>.wheel-caption'),bars=m.querySelectorAll(':scope>.setup-barrel');
 caps[0].classList.add('c1');bars[0].classList.add('c1');caps[1].classList.add('c2');bars[1].classList.add('c2');caps[1].style.marginTop='';})();</script>
+<style>.setup-action.timerBack{display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important}.setup-action.timerBack svg{width:26px;height:26px;display:block;filter:drop-shadow(0 0 3px #9fd2ff88)}</style>
+<script>(function(){const svg='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4.5 7.5 12 15 19.5" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';document.querySelectorAll('.timerBack').forEach(b=>{b.innerHTML=svg;if(!b.getAttribute('aria-label'))b.setAttribute('aria-label','Back')})})();</script>
 </html>
