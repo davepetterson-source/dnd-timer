@@ -591,7 +591,7 @@ main.app button#next.mobilebar:has(.next-details:not([hidden])) .copy{padding-ri
 <style>#scClose,#scHistBtn,#scheduleList>button.setup-action:last-child{font-size:18px!important;min-height:52px!important}</style>
 <style>#next.mobilebar .next-flags{right:34px!important;top:50%!important;bottom:auto!important;transform:translateY(-50%)!important}</style>
 <style id="sc-compact">
-#dialog .sc-main{display:grid!important;grid-template-columns:1fr 1fr;column-gap:10px;row-gap:0;padding-bottom:10px!important}
+#dialog.editing .sc-main{display:grid!important;grid-template-columns:1fr 1fr;column-gap:10px;row-gap:0;padding-bottom:10px!important}
 #dialog .sc-main>*{grid-column:1/-1}
 #dialog .sc-main>.wheel-caption{grid-row:4;margin:4px 0 2px!important;font-size:14px!important}
 #dialog .sc-main>.setup-barrel{grid-row:5;height:96px!important;grid-column:auto}
@@ -603,6 +603,10 @@ main.app button#next.mobilebar:has(.next-details:not([hidden])) .copy{padding-ri
 #dialog .repeat-row{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
 #dialog .repeat-row .setup-action{min-height:44px!important;font-size:14px!important;padding:0 4px!important;margin:0!important}
 #dialog .setup-note{display:none!important}
+#dialog .sc-main>.setup-barrel{height:max(96px,calc(100dvh - 558px))!important}
+#dialog:has(#scDelete:not([hidden])) .sc-main>.setup-barrel{height:max(96px,calc(100dvh - 598px))!important}
+#dialog .sc-main .setup-barrel .option{font-size:17px!important}
+#dialog .sc-main .setup-barrel .option.active{font-size:20px!important}
 #dialog .setup-section{padding:8px 10px!important;margin:6px 0!important}
 #dialog .setup-section h3{margin-bottom:0!important}
 #dialog .sc-main{padding-bottom:8px!important}
