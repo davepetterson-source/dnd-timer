@@ -563,4 +563,11 @@ main.app button#next.mobilebar:has(.next-details:not([hidden])) .copy{padding-ri
 #dialog .swatch{width:25px!important;height:25px!important}
 .app.active .activeInfo{margin-top:14px!important}
 </style>
+<style>
+#presetTiles .preset .kqline{position:absolute;left:10%;right:10%;top:66.8%;height:2px;border-radius:2px;pointer-events:none;z-index:1;background:linear-gradient(90deg,transparent,hsl(var(--tone) 100% 75% / .8) 15%,hsl(var(--tone) 100% 92%) 50%,hsl(var(--tone) 100% 75% / .8) 85%,transparent);box-shadow:0 0 7px 1px hsl(var(--tone) 100% 68% / .85)}
+#presetTiles .preset .kqglow{position:absolute;left:22%;right:22%;top:30.5%;height:5%;border-radius:50%;pointer-events:none;z-index:1;background:radial-gradient(ellipse at center,hsl(var(--tone) 100% 85% / .95),hsl(var(--tone) 100% 62% / .45) 50%,transparent 72%)}
+</style>
+<script>
+(function(){const r0=renderPresets;renderPresets=function(){r0();[...document.getElementById('presetTiles').children].forEach(b=>{b.querySelectorAll('.kqline,.kqglow').forEach(x=>x.remove());if(b.classList.contains('exact-art'))return;for(const c of ['kqglow','kqline']){const i=document.createElement('i');i.className=c;b.append(i)}})};renderPresets()})();
+</script>
 </html>
