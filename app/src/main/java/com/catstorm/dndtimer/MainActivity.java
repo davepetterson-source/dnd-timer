@@ -158,6 +158,11 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void clearHistory() {
+            Dnd.prefs(MainActivity.this).edit().remove(Dnd.KEY_HISTORY).apply();
+        }
+
+        @JavascriptInterface
         public void ackDone() {
             Dnd.prefs(MainActivity.this).edit().remove(Dnd.KEY_DONE).apply();
         }

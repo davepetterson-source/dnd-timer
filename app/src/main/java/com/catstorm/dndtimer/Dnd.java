@@ -323,7 +323,7 @@ final class Dnd {
         p.edit().remove(KEY_LABEL).remove(KEY_RUN_CALLS).remove(KEY_RUN_ALARMS).remove(KEY_ACTIVE).remove(KEY_START).remove(KEY_END).remove(KEY_MODE).remove(KEY_MUSIC).remove(KEY_POLICY_CHANGED).apply();
     }
 
-    /** Remember this run (name, start, real finish) in the list of the last five. */
+    /** Remember this run (name, start, real finish) in the list of the last ten. */
     private static void recordRun(SharedPreferences p) {
         try {
             long start = p.getLong(KEY_START, 0);
@@ -337,7 +337,7 @@ final class Dnd {
             org.json.JSONArray old = new org.json.JSONArray(p.getString(KEY_HISTORY, "[]"));
             org.json.JSONArray out = new org.json.JSONArray();
             out.put(o);
-            for (int i = 0; i < old.length() && out.length() < 5; i++) {
+            for (int i = 0; i < old.length() && out.length() < 10; i++) {
                 out.put(old.get(i));
             }
             p.edit().putString(KEY_HISTORY, out.toString()).apply();
