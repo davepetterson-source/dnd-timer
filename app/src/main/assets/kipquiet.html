@@ -459,7 +459,7 @@ body{min-height:100dvh;background:none!important;}
   }
   /* Hand the schedule list to the phone so it can start them itself, even with the app closed. */
   let lastSent=null;
-  function processDone(st){ if(st&&Array.isArray(st.done)&&st.done.length){ st.done.forEach(k=>{try{window.kqDisableOnce(k)}catch(_){}}); try{NK.ackDone()}catch(_){} } }
+  function processDone(st){ const dlg=document.getElementById('dialog'); if(dlg&&dlg.open) return; /* keep the switch on while Manage Schedules is open; switch a finished one-off off when it closes */ if(st&&Array.isArray(st.done)&&st.done.length){ st.done.forEach(k=>{try{window.kqDisableOnce(k)}catch(_){}}); try{NK.ackDone()}catch(_){} } }
   function syncSchedules(){
     let j; try{j=localStorage.getItem('kipSchedulesV2')||'[]'}catch(_){return}
     if(j===lastSent) return;
@@ -470,6 +470,7 @@ body{min-height:100dvh;background:none!important;}
     }catch(_){}
   }
   processDone(call('state'));
+  try{document.getElementById('dialog').addEventListener('close',()=>processDone(call('state')))}catch(_){}
   setInterval(syncSchedules,1000);
   syncSchedules();
   const startBtn=document.getElementById('start');
@@ -539,5 +540,8 @@ main.app button#next.mobilebar:has(.next-details:not([hidden])) .copy{padding-ri
 
 <style>
 #presetEditor #setupFlags>.setup-toggle:first-child{grid-column:1/-1}
+</style>
+<style>
+.app.active #activeMode #activeEnd{min-height:0!important}
 </style>
 </html>
