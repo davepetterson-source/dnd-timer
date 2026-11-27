@@ -197,7 +197,7 @@ function kqTintSurface(el, hue) {
  };image.src=source;
 }
 window.kqTintSurface=kqTintSurface;
-function tile(d,label,active,fn){let b=mk('button','pick-tile');b.type='button';press(b,active);let a=artwork[d.art];let bg=img(a.background,'bg');b.style.setProperty('--tone',presetTone(d));kqTintSurface(bg,d.hue);let pic=img(a.art,'picture');pic.style.filter="none";b.append(bg,pic,mk('b','',label));b.onclick=fn;return b}
+function tile(d,label,active,fn){let b=mk('button','pick-tile');b.type='button';press(b,active);let a=artwork[d.art];let bg=img(a.background,'bg');b.style.setProperty('--tone',presetTone(d));kqTintSurface(bg,d.hue);let pic=img(a.art,'picture');pic.style.filter="none";kqTintSurface(pic,d.hue);b.append(bg,pic,mk('b','',label));b.onclick=fn;return b}
 function toggle(label,source,on,fn){let b=mk('button','setup-toggle');b.type='button';press(b,on);b.append(img(source),mk('span','label',label),mk('span','lamp','✓'));b.onclick=()=>{let v=!isOn(b);press(b,v);fn(v)};return b}
 function drawSetup(){let row=$('setupPresetRow');row.replaceChildren();presets.forEach((d,i)=>{let card=tile(i===edit?draft:d,i===edit?draft.name:d.name,i===edit,()=>loadDraft(i));card.classList.add(i===edit?'selected-card':'unselected');row.append(card)});$('setupName').value=draft.name;let ar=$('setupArtRow');ar.replaceChildren();Object.keys(artwork).forEach(k=>ar.append(tile({art:k,hue:draft.art===k?draft.hue:0},'',draft.art===k,()=>{let tone=presetTone(draft);draft.art=k;draft.hue=(tone-presetTone({...draft,hue:0})+540)%360-180;drawSetup()})));let colors=$('setupColors');colors.replaceChildren();colors.append(mk('span','','Colour'));[['Teal',185],['Gold / Yellow',39],['Blue',210],['Purple',275],['Red',350],['Green',125],['Pink',320],['Orange',22]].forEach(([name,tone])=>{let h=(tone-presetTone({...draft,hue:0})+540)%360-180;let b=mk('button','swatch');b.title=name;b.setAttribute('aria-label',name);b.style.setProperty('--c',`hsl(${tone} 85% 48%)`);press(b,presetTone(draft)===tone);b.onclick=()=>{draft.hue=h;drawSetup()};colors.append(b)});let f=$('setupFlags');f.replaceChildren(toggle('Muted',iconArt.mute,draft.muted,v=>draft.muted=v),toggle('Phone favourites',mainToggles[0].querySelector('img').src,draft.flags[0],v=>draft.flags[0]=v),toggle('Alarms',mainToggles[1].querySelector('img').src,draft.flags[1],v=>draft.flags[1]=v),toggle('Music',mainToggles[2].querySelector('img').src,draft.flags[2],v=>draft.flags[2]=v));}
 function loadDraft(i){edit=i;draft=normalize(JSON.parse(JSON.stringify(presets[i])));drawSetup();set('setupDuration',draft.duration/5-1)}
@@ -541,4 +541,17 @@ document.getElementById('settingsBtn').onclick=()=>document.getElementById('menu
 (function(){const b=document.getElementById('iconPickBtn'),n=document.getElementById('setupName');
  if(b&&n&&n.parentElement){n.parentElement.appendChild(b);b.setAttribute('aria-label','Choose icon');b.title='Choose icon'}})();
 </script>
+<style>
+#presetEditor .setup-section{padding:9px 10px!important;margin:6px 0!important}
+#presetEditor .setup-section h3{margin-bottom:0!important}
+#presetEditor .setup-toggle{min-height:40px!important}
+#presetEditor .setup-toggles{gap:7px!important}
+#presetEditor .setup-barrel{height:72px!important;margin-top:8px}
+#presetEditor .entry{margin:4px 0!important}
+#presetEditor .swatches{margin-top:8px!important;gap:4px!important}
+#presetEditor .swatch{width:23px!important;height:23px!important}
+#presetEditor .swatches>span{margin-right:0!important}
+#presetEditor .setup-actions{margin-top:8px!important}
+#presetEditor h2{margin:4px 0!important}
+</style>
 </html>
