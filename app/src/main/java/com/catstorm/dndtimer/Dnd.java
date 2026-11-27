@@ -361,8 +361,74 @@ final class Dnd {
 
     /** The page hands over its list of repeating schedules; the phone then starts them by itself. */
     static void setSchedules(Context c, String json) {
-        prefs(c).edit().putString(KEY_SCHEDS, json).remove(KEY_SKIP).apply();
+        SharedPreferences p = prefs(c);
+        String before = p.getString(KEY_SCHEDS, "[]");
+        p.edit().putString(KEY_SCHEDS, json).remove(KEY_SKIP).apply();
+        startIfInWindow(c, before, json);
         rearmList(c, true);
+    }
+
+    /** A schedule that was just added, edited or switched on while its time window is already under way
+     *  starts now, for the time that is left (nothing else may be running). */
+    private static void startIfInWindow(Context c, String before, String after) {
+        SharedPreferences p = prefs(c);
+        if (p.getBoolean(KEY_ACTIVE, false)) {
+            return;
+        }
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        if (!nm.isNotificationPolicyAccessGranted()) {
+            return;
+        }
+        try {
+            java.util.HashSet<String> old = new java.util.HashSet<>();
+            org.json.JSONArray oa = new org.json.JSONArray(before);
+            for (int i = 0; i < oa.length(); i++) {
+                old.add(oa.getJSONObject(i).toString());
+            }
+            org.json.JSONArray na = new org.json.JSONArray(after);
+            long now = System.currentTimeMillis();
+            for (int i = 0; i < na.length(); i++) {
+                org.json.JSONObject o = na.getJSONObject(i);
+                if (!o.optBoolean("enabled", true) || old.contains(o.toString())) {
+                    continue;
+                }
+                long durMs = Math.max(1, o.optInt("duration", 60)) * 60_000L;
+                boolean daily = "daily".equals(o.optString("repeat")) || "once".equals(o.optString("repeat"));
+                org.json.JSONArray days = o.optJSONArray("days");
+                for (int k = 0; k < 2; k++) {
+                    java.util.Calendar cal = java.util.Calendar.getInstance();
+                    cal.setTimeInMillis(now);
+                    cal.add(java.util.Calendar.DAY_OF_YEAR, -k);
+                    cal.set(java.util.Calendar.HOUR_OF_DAY, o.optInt("hour", 22));
+                    cal.set(java.util.Calendar.MINUTE, o.optInt("minute", 0));
+                    cal.set(java.util.Calendar.SECOND, 0);
+                    cal.set(java.util.Calendar.MILLISECOND, 0);
+                    int wd = cal.get(java.util.Calendar.DAY_OF_WEEK) - 1;
+                    boolean ok = daily;
+                    for (int d = 0; !ok && days != null && d < days.length(); d++) {
+                        ok = days.optInt(d, -1) == wd;
+                    }
+                    long st = cal.getTimeInMillis();
+                    if (!ok || st > now || now >= st + durMs) {
+                        continue;
+                    }
+                    int left = (int) Math.max(1, (st + durMs - now + 59_999L) / 60_000L);
+                    org.json.JSONArray fl = o.optJSONArray("flags");
+                    boolean faves = fl == null || fl.optBoolean(0, true);
+                    boolean alarms = fl == null || fl.optBoolean(1, true);
+                    boolean music = fl == null || fl.optBoolean(2, true);
+                    if ("once".equals(o.optString("repeat"))) {
+                        p.edit().putString(KEY_SCHED_ONCE, scheduleKey(o)).apply();
+                        markOnceDone(c);
+                    }
+                    clearScheduled(c);
+                    activate(c, DND, left, music, faves ? 1 : 0, alarms ? 1 : 0, o.optString("name", "Quiet Time"));
+                    return;
+                }
+            }
+        } catch (Exception ignored) {
+            // never let this break saving schedules
+        }
     }
 
     /** Put the soonest enabled schedule in the waiting slot (only when nothing else is running or waiting). */
@@ -552,7 +618,10 @@ final class Dnd {
         }
 
         SimpleDateFormat f = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        String what = (mode == SILENT ? "Silent" : "Do Not Disturb") + (music ? " + Music" : "");
+        String what = p.getString(scheduled ? KEY_SCHED_LABEL : KEY_LABEL, "Timer");
+        if (what == null || what.isEmpty()) {
+            what = "Timer";
+        }
         String endText = end == 0 ? "until you end it" : "Ends " + f.format(new Date(end));
         String title = scheduled ? "KipQuiet Scheduled" : "KipQuiet Active";
         String body = scheduled
