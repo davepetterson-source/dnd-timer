@@ -199,7 +199,7 @@ function kqTintSurface(el, hue) {
 window.kqTintSurface=kqTintSurface;
 function tile(d,label,active,fn){let b=mk('button','pick-tile');b.type='button';press(b,active);let a=artwork[d.art];let bg=img(a.background,'bg');b.style.setProperty('--tone',presetTone(d));kqTintSurface(bg,d.hue);let pic=img(a.art,'picture');pic.style.filter="none";kqTintSurface(pic,d.hue);b.append(bg,pic,mk('b','',label));b.onclick=fn;return b}
 function toggle(label,source,on,fn){let b=mk('button','setup-toggle');b.type='button';press(b,on);b.append(img(source),mk('span','label',label),mk('span','lamp','✓'));b.onclick=()=>{let v=!isOn(b);press(b,v);fn(v)};return b}
-function drawSetup(){let row=$('setupPresetRow');row.replaceChildren();presets.forEach((d,i)=>{let card=tile(i===edit?draft:d,i===edit?draft.name:d.name,i===edit,()=>loadDraft(i));card.classList.add(i===edit?'selected-card':'unselected');row.append(card)});$('setupName').value=draft.name;let ar=$('setupArtRow');ar.replaceChildren();Object.keys(artwork).forEach(k=>ar.append(tile({art:k,hue:draft.art===k?draft.hue:0},'',draft.art===k,()=>{let tone=presetTone(draft);draft.art=k;draft.hue=(tone-presetTone({...draft,hue:0})+540)%360-180;drawSetup()})));let colors=$('setupColors');colors.replaceChildren();colors.append(mk('span','','Colour'));[['Teal',185],['Gold / Yellow',39],['Blue',210],['Purple',275],['Red',350],['Green',125],['Pink',320],['Orange',22]].forEach(([name,tone])=>{let h=(tone-presetTone({...draft,hue:0})+540)%360-180;let b=mk('button','swatch');b.title=name;b.setAttribute('aria-label',name);b.style.setProperty('--c',`hsl(${tone} 85% 48%)`);press(b,presetTone(draft)===tone);b.onclick=()=>{draft.hue=h;drawSetup()};colors.append(b)});let f=$('setupFlags');f.replaceChildren(toggle('Muted',iconArt.mute,draft.muted,v=>draft.muted=v),toggle('Phone favourites',mainToggles[0].querySelector('img').src,draft.flags[0],v=>draft.flags[0]=v),toggle('Alarms',mainToggles[1].querySelector('img').src,draft.flags[1],v=>draft.flags[1]=v),toggle('Music',mainToggles[2].querySelector('img').src,draft.flags[2],v=>draft.flags[2]=v));}
+function drawSetup(){let row=$('setupPresetRow');row.replaceChildren();presets.forEach((d,i)=>{let card=tile(i===edit?draft:d,i===edit?draft.name:d.name,i===edit,()=>loadDraft(i));card.classList.add(i===edit?'selected-card':'unselected');row.append(card)});$('setupName').value=draft.name;let ar=$('setupArtRow');ar.replaceChildren();Object.keys(artwork).forEach(k=>ar.append(tile({art:k,hue:draft.art===k?draft.hue:0},'',draft.art===k,()=>{let tone=presetTone(draft);draft.art=k;draft.hue=(tone-presetTone({...draft,hue:0})+540)%360-180;drawSetup()})));let colors=$('setupColors');colors.replaceChildren();colors.append(mk('span','','Colour'));[['Teal',185],['Gold / Yellow',39],['Blue',210],['Purple',275],['Red',350],['Green',125],['Pink',320],['Orange',22]].forEach(([name,tone])=>{let h=(tone-presetTone({...draft,hue:0})+540)%360-180;let b=mk('button','swatch');b.title=name;b.setAttribute('aria-label',name);b.style.setProperty('--c',`hsl(${tone} 85% 48%)`);press(b,presetTone(draft)===tone);b.onclick=()=>{draft.hue=h;drawSetup()};colors.append(b)});let f=$('setupFlags');f.replaceChildren(toggle('Phone favourites',mainToggles[0].querySelector('img').src,draft.flags[0],v=>draft.flags[0]=v),toggle('Alarms',mainToggles[1].querySelector('img').src,draft.flags[1],v=>draft.flags[1]=v),toggle('Music',mainToggles[2].querySelector('img').src,draft.flags[2],v=>draft.flags[2]=v));}
 function loadDraft(i){edit=i;draft=normalize(JSON.parse(JSON.stringify(presets[i])));drawSetup();set('setupDuration',draft.duration/5-1)}
 function openPreset(){if(!pe.open)pe.showModal();loadDraft(selected<0?0:selected)}
 $('settingsBtn').onclick=openPreset;document.querySelector('h1').replaceWith(document.querySelector('h1').cloneNode(true));document.querySelector('h1').onclick=openPreset;$('setupName').oninput=e=>{draft.name=e.target.value;let b=$('setupPresetRow').children[edit].querySelector('b');b.textContent=draft.name||'Untitled'};$('setupCancel').onclick=()=>pe.close();$('setupSave').onclick=()=>{draft.name=draft.name.trim()||presets[edit].name;presets[edit]=normalize(draft);try{localStorage.setItem('kipModularPresets',JSON.stringify(presets))}catch{}if(edit===selected)applyPreset(edit);else renderPresets();pe.close()};
@@ -223,7 +223,7 @@ const dial=document.querySelector('.clock'), ring=mk('canvas');ring.id='clockRin
 function scheduleTick(now){if(now-lastScheduleCheck>1500){let previous=lastScheduleCheck;lastScheduleCheck=now;if(!ends){for(let i=0;i<schedules.length;i++){let s=schedules[i],t=nextOccurrence(s,previous+1);if(t&&+t<=now&&lastRun[i]!==+t){lastRun[i]=+t;if(s.repeat==='once'){s.enabled=false;saveSchedules()}selected=-1;preset=s.name;mainToggles.forEach((b,j)=>press(b,(s.flags||[true,true,true])[j]));duration=s.duration;delay=0;quickFinishTarget=0;set('duration',duration-1);set('delay',0);set('finish',duration-1);begins=+t;ends=begins+duration*60000;button();renderPresets();break}}}renderNext()}}
 function drawClock(){let now=Date.now();scheduleTick(now);let rect=ring.getBoundingClientRect(),dpr=Math.min(3,devicePixelRatio||1),size=Math.max(1,Math.round(rect.width*dpr));if(ring.width!==size||ring.height!==size){ring.width=ring.height=size}let r=size/2;cx.clearRect(0,0,size,size);let n=new Date(now),running=ends>now,waiting=running&&now<begins;let progress=running?Math.max(0,Math.min(1,(ends-Math.max(now,begins))/(ends-begins))):(n.getSeconds()+n.getMilliseconds()/1000)/60;let count=running?Math.ceil(progress*60):Math.floor(progress*60);cx.lineCap='round';for(let i=0;i<60;i++){let a=(i*6-90)*Math.PI/180,lit=i<count,major=i%5===0;cx.beginPath();cx.moveTo(r+Math.cos(a)*r*(.865),r+Math.sin(a)*r*(.865));cx.lineTo(r+Math.cos(a)*r*.95,r+Math.sin(a)*r*.95);cx.lineWidth=Math.max(1,r*.025);const blend=i/59;const mix=(a,b)=>'rgb('+a.map((v,j)=>Math.round(v+(b[j]-v)*blend)).join(',')+')';cx.strokeStyle=lit?mix([221,156,255],[80,223,255]):'#294064';cx.shadowColor=lit?mix([168,74,255],[0,143,255]):'transparent';cx.shadowBlur=lit?r*.055:0;cx.stroke()}cx.shadowBlur=0;dial.classList.toggle('counting',running);if(running){let sec=Math.max(0,Math.ceil(((waiting?begins:ends)-now)/1000));$('clock').textContent=(sec>=3600?Math.floor(sec/3600)+':':'')+pad(Math.floor(sec/60)%60)+':'+pad(sec%60)}requestAnimationFrame(drawClock)}requestAnimationFrame(drawClock);
 // Keep the original timer interaction; store the current sound choice with the selected preset only.
-const oldInfo=$('info').onclick;$('info').onclick=()=>alert('Allow Through controls Phone favourites, Alarms and Music. Preset Setup also stores the muted setting. Device audio and calls are simulated in this HTML prototype.');renderPresets();
+const oldInfo=$('info').onclick;$('info').onclick=()=>alert('Allow Through controls Phone favourites, Alarms and Music. With none ticked, the phone is fully silent. Device audio and calls are simulated in this HTML prototype.');renderPresets();
 {
   const dlg=document.createElement('dialog');dlg.className='kqsetup';dlg.id='iconPicker';
   dlg.innerHTML='<h2>Choose icon</h2><div class="setup-section"><div id="setupArtRow" class="choice-row art-row"></div></div><div class="setup-actions"><button class="setup-action" id="iconPickBack">Back</button></div>';
@@ -359,36 +359,6 @@ body{min-height:100dvh;background:none!important;}
  setInterval(update,500);
 })();
 </script>
-<script>
-/* Muted is exclusive with the three exceptions: ticking Muted clears and dims them; ticking one clears Muted. */
-(function(){
-  const box=document.getElementById('setupFlags'); if(!box) return;
-  let busy=false;
-  const kids=()=>[...box.querySelectorAll(':scope > .setup-toggle')];
-  const on=b=>b.getAttribute('aria-pressed')==='true';
-  function sync(){
-    if(busy) return; const [m,...o]=kids(); if(!m) return;
-    busy=true;
-    try{
-      const muted=on(m);
-      if(muted) o.forEach(b=>{ if(on(b)) b.click(); });
-      o.forEach(b=>{ b.style.opacity = muted ? '.4' : ''; });
-    } finally { busy=false; }
-  }
-  function enforce(clicked){
-    if(busy) return; busy=true;
-    try{
-      const [m,...o]=kids();
-      if(clicked===m){ if(on(m)) o.forEach(b=>{ if(on(b)) b.click(); }); }
-      else if(on(clicked) && on(m)) m.click();
-    } finally { busy=false; }
-    sync();
-  }
-  box.addEventListener('click', e=>{ const b=e.target.closest('.setup-toggle'); if(b && b.parentNode===box) enforce(b); });
-  new MutationObserver(sync).observe(box,{childList:true});
-  sync();
-})();
-</script>
 <style>
 #presetTiles .preset,.kqsetup .pick-tile{background:transparent!important;border-color:transparent!important;box-shadow:none!important;isolation:isolate}
 #presetTiles .preset .tilebase,.kqsetup .pick-tile .bg{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:fill!important;z-index:-1!important;border-radius:inherit!important}
@@ -448,8 +418,7 @@ body{min-height:100dvh;background:none!important;}
   function payload(){
     const now=Date.now(), [faves,alarms,music]=toggles();
     const p=(typeof selected==='number'&&selected>=0)?presets[selected]:null;
-    const muted=p?p.muted!==false:false;
-    const silent=muted&&!faves;
+    const silent=!faves&&!alarms&&!music; /* nothing allowed through = fully silent */
     const delayed=begins-now>=60000;
     const from=Math.max(now,begins);
     return {label:preset||'Timer',startMs:delayed?begins:0,minutes:Math.max(1,Math.round((ends-from)/60000)),
@@ -564,4 +533,7 @@ main.app button#next.mobilebar:has(.next-details:not([hidden])) .copy{padding-ri
 #next.mobilebar .next-flags img{width:19px!important;height:19px!important}
 </style>
 
+<style>
+#presetEditor #setupFlags>.setup-toggle:first-child{grid-column:1/-1}
+</style>
 </html>
