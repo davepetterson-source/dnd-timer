@@ -515,4 +515,17 @@ body{min-height:100dvh;background:none!important;}
 /* The cog opens Preset Setup directly (Manage Schedules stays on the Next Schedule bar). */
 document.getElementById('settingsBtn').onclick=()=>document.getElementById('menuPresets').onclick();
 </script>
+<style>#presetTiles .preset:not(.exact-art) .tileart{left:5%!important;top:-1%!important;width:90%!important;height:46%!important;object-fit:contain!important}</style>
+<script>
+/* Picked icons (e.g. the bed) take the colour of their tile, like the built-in ones. */
+(function(){
+  function hueOf(src,cb){const im=new Image();im.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=48;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(im,0,0,48,48);const d=x.getImageData(0,0,48,48).data;let sx=0,sy=0,w=0;for(let i=0;i<d.length;i+=4){if(d[i+3]<200)continue;const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,v=Math.max(r,g,b),m=Math.min(r,g,b),dd=v-m;if(dd<.25||v<.35)continue;let h=v===r?((g-b)/dd+6)%6:v===g?2+(b-r)/dd:4+(r-g)/dd;h*=Math.PI/3;sx+=Math.cos(h)*dd;sy+=Math.sin(h)*dd;w+=dd}cb(w?((Math.atan2(sy,sx)*180/Math.PI)+360)%360:null)}catch(_){cb(null)}};im.src=src}
+  function fix(t){const art=t.querySelector('.tileart'),base=t.querySelector('.tilebase');if(!art||!base||t.classList.contains('exact-art'))return;
+    const key=art.src+'|'+base.src;if(t.dataset.kqk===key)return;t.dataset.kqk=key;
+    hueOf(base.src,bh=>{if(bh===null)return;hueOf(art.src,ah=>{if(ah===null)return;let d=Math.round(bh-ah);art.style.setProperty('filter','hue-rotate('+d+'deg) saturate(1.15)','important')})})}
+  function all(){document.querySelectorAll('#presetTiles .preset').forEach(fix)}
+  new MutationObserver(all).observe(document.getElementById('presetTiles'),{childList:true,subtree:true,attributes:true,attributeFilter:['src']});
+  all();
+})();
+</script>
 </html>
