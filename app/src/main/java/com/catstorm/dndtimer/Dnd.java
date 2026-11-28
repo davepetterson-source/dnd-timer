@@ -156,7 +156,7 @@ final class Dnd {
                 .remove(KEY_SCHED_MIN).remove(KEY_SCHED_MUSIC).remove(KEY_SCHED_CALLS).remove(KEY_SCHED_ALARMS).remove(KEY_SCHED_LABEL).remove(KEY_SCHED_AUTO).remove(KEY_SCHED_ONCE).apply();
     }
 
-    /** calls: -1 = use my own Android settings, 0 = block all calls, 1 = starred contacts only.
+    /** calls: -1 = use my own Android settings, 0 = block all calls, 1 = starred contacts only, 2 = anyone.
      *  alarms: 0 = alarms silenced too, 1 = alarms allowed, -1 = default (allowed in Do Not Disturb, silenced in Silent). */
     private static boolean activate(Context c, int mode, int minutes, boolean music, int calls, int alarms, String label) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
@@ -194,10 +194,10 @@ final class Dnd {
                 if (music) {
                     cats |= NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA;
                 }
-                if (calls == 1) {
+                if (calls >= 1) {
                     cats |= NotificationManager.Policy.PRIORITY_CATEGORY_CALLS;
                 }
-                callS = NotificationManager.Policy.PRIORITY_SENDERS_STARRED;
+                callS = calls == 2 ? NotificationManager.Policy.PRIORITY_SENDERS_ANY : NotificationManager.Policy.PRIORITY_SENDERS_STARRED;
                 msgs = pol.priorityMessageSenders;
                 conv = 2; /* CONVERSATION_SENDERS_NONE */
             } else if (mode == DND) {
@@ -227,6 +227,22 @@ final class Dnd {
         }
         showNotification(c);
         return true;
+    }
+
+    /** Contacts flag of a schedule: false = none, true = starred, 2 = anyone. */
+    static int callsOf(org.json.JSONArray fl) {
+        if (fl == null) {
+            return 1;
+        }
+        Object v = fl.opt(0);
+        if (v instanceof Number) {
+            int n = ((Number) v).intValue();
+            return n == 2 ? 2 : (n == 0 ? 0 : 1);
+        }
+        if (v instanceof Boolean) {
+            return ((Boolean) v) ? 1 : 0;
+        }
+        return 1;
     }
 
     /** The user ended or cancelled it: put everything back and stop any repeating too. */
@@ -414,7 +430,7 @@ final class Dnd {
                     }
                     int left = (int) Math.max(1, (st + durMs - now + 59_999L) / 60_000L);
                     org.json.JSONArray fl = o.optJSONArray("flags");
-                    boolean faves = fl == null || fl.optBoolean(0, true);
+                    int callsV = callsOf(fl);
                     boolean alarms = fl == null || fl.optBoolean(1, true);
                     boolean music = fl == null || fl.optBoolean(2, true);
                     if ("once".equals(o.optString("repeat"))) {
@@ -422,7 +438,7 @@ final class Dnd {
                         markOnceDone(c);
                     }
                     clearScheduled(c);
-                    activate(c, DND, left, music, faves ? 1 : 0, alarms ? 1 : 0, o.optString("name", "Quiet Time"));
+                    activate(c, DND, left, music, callsV, alarms ? 1 : 0, o.optString("name", "Quiet Time"));
                     return;
                 }
             }
@@ -473,12 +489,12 @@ final class Dnd {
             return;
         }
         org.json.JSONArray fl = best.optJSONArray("flags");
-        boolean faves = fl == null || fl.optBoolean(0, true);
+        int callsV = callsOf(fl);
         boolean alarms = fl == null || fl.optBoolean(1, true);
         boolean music = fl == null || fl.optBoolean(2, true);
         p.edit().putBoolean(KEY_SCHED, true).putBoolean(KEY_SCHED_AUTO, true).putLong(KEY_SCHED_START, bestAt)
                 .putInt(KEY_SCHED_MODE, DND).putInt(KEY_SCHED_MIN, Math.max(1, best.optInt("duration", 60)))
-                .putBoolean(KEY_SCHED_MUSIC, music).putInt(KEY_SCHED_CALLS, faves ? 1 : 0).putInt(KEY_SCHED_ALARMS, alarms ? 1 : 0)
+                .putBoolean(KEY_SCHED_MUSIC, music).putInt(KEY_SCHED_CALLS, callsV).putInt(KEY_SCHED_ALARMS, alarms ? 1 : 0)
                 .putString(KEY_SCHED_LABEL, best.optString("name", "Quiet Time"))
                 .putString(KEY_SCHED_ONCE, "once".equals(best.optString("repeat")) ? scheduleKey(best) : "").apply();
         schedule(c, bestAt, pendingBegin(c));

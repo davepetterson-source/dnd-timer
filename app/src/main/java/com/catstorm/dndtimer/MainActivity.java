@@ -120,10 +120,11 @@ public class MainActivity extends Activity {
                 int mode = "silent".equals(o.optString("mode")) ? Dnd.SILENT : Dnd.DND;
                 int minutes = Math.max(1, o.optInt("minutes", 60));
                 boolean music = o.optBoolean("music", false);
-                // faves: true = starred contacts may call, false = no calls; missing = use my own Android settings
+                // faves: true = starred contacts may call, 2 = anyone may call, false = no calls; missing = use my own Android settings
                 String label = o.optString("label", "Timer");
                 int alarms = o.has("alarms") ? (o.optBoolean("alarms") ? 1 : 0) : -1;
-                int calls = o.has("faves") ? (o.optBoolean("faves") ? 1 : 0) : -1;
+                Object fv = o.opt("faves");
+                int calls = fv == null || fv == JSONObject.NULL ? -1 : (fv instanceof Number ? (((Number) fv).intValue() == 2 ? 2 : (((Number) fv).intValue() == 0 ? 0 : 1)) : (Boolean.TRUE.equals(fv) ? 1 : 0));
                 long startAt = o.optLong("startMs", 0);
                 int startMin = o.optInt("startMin", -1);
                 int stIdx = startMin < 0 ? 0 : startMin / 15 + 1;
