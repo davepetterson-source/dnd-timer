@@ -1,0 +1,2071 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#030d13"><title>Tonight’s Charge</title><style>
+@keyframes cell-breathe {
+  0%,
+  to {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.2) saturate(1.1);
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body,
+html {
+  margin: 0;
+  color: #f5f9f9;
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    sans-serif;
+}
+body {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  background: #030c11;
+}
+html {
+  min-height: 100%;
+  background: #041019;
+}
+.app {
+  display: flex;
+  flex-direction: column;
+}
+h1 {
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  text-align: center;
+  margin: 0;
+  line-height: 1.1;
+}
+.flare {
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #00c57d, #dbfff1, #00c57d, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 13px #00e99b;
+  width: 84%;
+  margin: 8px auto 0;
+}
+.app section,
+.gauge {
+  flex-shrink: 0;
+}
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.battery,
+.battery-wrap,
+.gauge,
+header {
+  position: relative;
+}
+.battery:after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 29%;
+  width: 12px;
+  height: 43%;
+  border-radius: 0 5px 5px 0;
+  border: 1px solid #8da9ad;
+  background: linear-gradient(#eaffff, #a1b8bb 20%, #203a40 54%, #64818a 85%, #c3d7d6);
+  box-shadow: 0 0 5px #6fffd833;
+}
+.cells {
+  display: grid;
+}
+.cell {
+  overflow: hidden;
+  position: relative;
+}
+.battery:focus-within {
+  outline: 2px solid #c8fff1;
+  outline-offset: 4px;
+}
+.cheap {
+  color: #53f9b5;
+}
+.peak {
+  color: #ff646b;
+}
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1.13fr 1fr;
+  border: 1.5px solid #20dba0;
+  border-radius: 17px;
+  box-shadow:
+    0 0 14px #00e99b27,
+    inset 0 1px 7px #00e99b25;
+  text-align: center;
+}
+.stat + .stat {
+  border-left: 1px solid #387367;
+}
+.stat b,
+.stat span {
+  display: block;
+  white-space: nowrap;
+}
+.stat span {
+  font-size: clamp(12px, 3.3vw, 16px);
+  color: #d9e6e4;
+}
+.stat b {
+  letter-spacing: -0.045em;
+  margin-top: 4px;
+  font-size: clamp(20px, 5.8vw, 29px);
+}
+.stat:last-child b {
+  color: #50f6b4;
+}
+.battery-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 2px 6px;
+  font-weight: 650;
+}
+.battery-title strong {
+  color: #55f9b5;
+  font-variant-numeric: tabular-nums;
+}
+.app {
+  width: min(100%, 480px);
+  max-width: 480px;
+  background: #030d13
+    url(data:image/webp;base64,UklGRvIqAABXRUJQVlA4IOYqAAAwyAGdASogA9wFPi0WiUOhoSEQelQcGALEtLd8GF3GqMyxR36DV8G/4f6fd9QRSFzXH5N0BDynwBvMPWy8KPuI0uuZb0peUC/FedjoBaPKP8htpL9s6AfvXdZ9g/Ln+Vn55Prevo374elZpR5D/odrvw72y/PEvpZ3wyd9Td7mBMeV4aBAgQIECBAgQIECII62pMBakFixYsWLB6C2ezRPeGgQIEDQ9s9mie+UEwU85qW/BTzmpy5cuXLly5mK38jxbttf7MM459LbdGk/21JgLUgsWLLRKseQD5Gx7cBSwygWmcT3hoECBAgQIECBAgKkr5VjfhP2OJ7w0CBAgQIECBAgQIEEGIZAgWtAfLapMBakFinGsBxQB2WpBYp8K8bk1dwSvd+E/21JgJmeh7akwWUmvDQIGpYY4LFinm8y1ILFPOanLly5czFZakFlrUSpp7wygUM46J7Lz73onvDQIEDQ9tSYC32YNAUChnHROsN1tSYC1ILFixmKW63L4gywhigW1Jcmrw0CBAgQIECBBBliwfQUuOAcQMz7FiwhkCBAgQIECBAgQIIMsWMGJHy2M4nu3C2pMBakFixYsWLFjMUt13eNxolP9pnE94aBAgQIECBAgQE4e05cOCWTzI4MRn2LCGQIECBAUaIx8FbUmAtSkkUgy+P2lm5S34LFixYPQW1JgLUgsWLCru2ggp8N3Sre/Wz2aJ7wya9x0T3hoECBAgMGorw4MQyA+W1SYCyqNA0PbdZBTw9E94bQ9s99nJ0zdinnNTlw2WpBYsWLLPsUH3KcubG6KQxgLKo0CA+W1SYC1ILFloIxwWLCKFOdUj5yDASX90sNAUC2pMBakFixYp8KGXLlzY3QYc72Kec1OVvwWLFixYsWLFixYsWLFixYsWEMgQHy2qTAWpBYsWLFizwt1tXZynLl1CU5W/BYsWLFixYsWLLKG/q5cuRLzdUYC06ZAgPltUl0y9NcnoZR6rDn8Yqkk/+GBAhYyQHyAsd1yk+S0T7JwxSqD6L1SUmhQQmeWBeEQkuPEHAVYFJlg4FgZDUljKVrVkoxbQOLAiVZH6ewdPY2H0KTlHTpJA+T/Dm7RwuD573ojPDPf+OP+XFvwkiOFDYTZ4+ar1b7CYCxXXqo5HoT1aour+LdydzSSJZY5Qnj2CLfqdyQeo7VdGqGwSbmnaqRH75XeO8lCPLY2F9c2eE0PSuhYdwVsTkVgZbRuW7fX4TSXRjhvf8sIVystjKsmeYyIenB/MX2m9UdP5wtR9wer/ywnUgw9nGUD4j8qeexaURFnf89VH4sb0Fg31HqWjNKYcDDHNA/ZxcTwJwcEtUas9RYkL7h6/Adqt4Si055VXnsRyLrXQJ16Z2GuZ3zoJaoPo/uQypL4f9vB65E20pbb5By0E5nuRbm5cf1aTrONsFT3L/cyFrdVSGhzAMbTsk/24f8AtPbmlUPEQK0fKSWn7231PTFTKzo+eNgT6uhig5S5XMxNkFd9jXcNv77UyRJ6F5XKV0VlM99M+IHYj3lmaHtSA6gecHJoGCHgx8fqO/e1BVZAMxavpYkfurcBon0FY0N6o8KniiY7r75LiqYriF4tayejqVOSHKH2y0ndUaC2CHdOPw2dvdBuUwjhJVV50bw9VHSYf3luGvoszXi9wLAah2LqpLDZlwdTyBB6aR8e6ib7+mKgfB765iubHTIKVG2XwsYHHxLFlCrn05xjorBxctO1XdXUicGRSMF2L/Vh091bEKhhUzPvSG52+C8tBz/FFC04sDSCWfESR7TOjfCp+wrtov67YJggUJUzGoBZ9p9vlyKMEumvFM05H3GLlDfb41JXwleIvyqEEqIxt8Q7V+ZD5yzqhwF9P267bdAK7GLzT6PwQKfK34h2r0x8coc/88EIgL2U6HGSiZGM3/ywBJM9RGC8pTiDQUcUOr8V4EP3NSHWRdB1gy3WtC8pe8pcX0WUX0Oj2kpgG6TTDOzkqaL1LOcDlNh9rxpxlfyGXMUNgS1o0/2/8tPUvSKytZMFZEFWKo180vTtxh2NbIO9FgoJhW0tOo4rjeU6IMKRVwGG4mNtfrI8T3iUPr4epREGx+AxQPrwh6TFA+q+HqdaabHOGkTOMMjOVi3lswfNS2sAQaaK/zH9kX2QL7fWbtSFNxTHsT+R3F4nlUJnn954038hSaqv824NmvRBagvGStLprvIQzgl7Xh4cV1w1oHgCQVgnvdEEa0H6h6hWO8qQvpi3NI3Leh/izHFRAem7cNje1DVV57LY7A5bS9Z8A1CIYa/Fs9cUtBVl0xTqrabdJqR4QDXHXJtCC/DtJvzX5nDxubifCARhUcyJ9QyVJupNFowYmKf6MIeKKLKPr5iqk61QU5ly5dY2WYE4ZsAZLK3Er3oCkppCefSGswzcUhbsnWdwbKhp+BDYlCLVphJ+upwiv4LANGZNMBSEnipKMwkWaRsi8LZQ5rhWMs8QR1PhEnigpWtdv0x7GE4+MRmf4TvnyXtd8Mj06p2e9agDAVYYDr1F7lhifc5+qifkH+7odIGh5WCbsywcHO0zNMpFI18B1Qdb9uRqtTmmAZKE9IYrTU0siUVodzLJa+A34sOn4e3ZGv4X71hSWUBcMgK5FT/kDd7CkONyWh5CkKcx8xFpeUvu2l+LZq/WAjZgzCRDawrA/0A9OuBIgu9blgqKYhBZ0JPBj8zLWSKHptlyozBrBodwBpYFV3ss3aFeJOuGuNAm1zoxQdGRAp/xlzHOPC+BVK52A3OT67uwXyk7V1SbQn/R2fLPXPgZIHB3y7IJ6apQZnNG/l9BjGrsQSmAc7wvicnaEnC2Nyka0+lNrg50rrMGQUt1IOwwSU9EPwvZF24fh+zsFHMNtXNOwRpdMF3oK1Xbu4gxon59Y5T0Rv4mdZ0EL4i+Ho28ogmCMmQJtKV2/qui3hI/ajAV1azUu2JhRVyw1MCnSCMg27/EtWG5bO4aiJXrFTf0XK7oBHObkmtH2+32+dU7IXsLHNzxDXktZtj75q0St07D7xoUgeu91KDH/t+xIAyVe3B+73GKfFLQVZdhEiMd20JYR9iLtlOF/VqynZSrOAqidYiDX13qtQZavMSYif7A0uvloKoxcou3/GLRVZdhEnJLtfpLfnPLa8t6IRKAOp09MTOg1EQO+Gn96nV6GTNcuXQqrDn5UWLFixhuu9cvQ1/i9aWYcIlhPgTSqS7ywGSsy9DJmuXPfrDn8YtFVl0etU5esfefeRutqTAWpBYsWLFixYsWLJfFutxapzY3RPeIxkgQIECBAgQIECBBBlixYsWLFixYskwWLFixYsWLFixYsWLFjMUt13d9yrG6J7w0CBAgQIECBAjOCxZ4W62qJpMBakFixYsWLFixYsWLFixYsWLFi7uxYsXd2LFixYsWLFixYsWLFjMUt1tSYC1ILu7FixYsWLFixYs8LdbUmAtSC7uxYsXd2LFixYsWLFixYsWLGYpbralFowFqQkwWLFixYsWLFjMUt1uLVOXLly5cuXLly5cuXLly5cuXLly5ixcuXLmLFy5cuXLly5cuXLly8PRPeMcFjMUt1tSYC/AJD7lOXLly5cuXLly5cuXNjqsdFjbw0CBAgQIECBAgQIECBBBlixYsWLFixYsbEc+V3vRPeGgQIECBAgQIEC0CBAhYyQIECBAgQIECDWZIECCDLFnnUTu2pMBakFi01gau/cpy5//Lly5cuXLmy79LrE+K14aBAgomnMmRaJ4LFixYsZilutqTBAtSC7uxYsWLFixYsWLFixYsWLGYqvaFjJBXMkCBAgQIECBAgQIECBAgQI95Bd3YsbuCxYsWLFixYsWLFixYsWLFiyV4IaBBXMkCBAgQIECBAgQIECBGcPC5e4tbUmFsEh9ynLly5cuXLly5cuXLly5dQlOXLlzFi5cuXLly5cuZistSC7uxYsXh9INAgQFAtqTAWpBYtrdixYzFYOvDQVzJaBAgQIFoECBAgQbBf9tSYC1ILFi7uyZ6pGC73on5qk/5pXD1VwWLFixYsWLFjBiJ7NtBGAtSCxYsWLFixYsWLCJOCxmKW6i1S0hlhdqTAWpBYsWLFixYsU963vRQx8/9FqcqsdE94aBAgQIECBNvmUXtrD/gikqkbix4+Nt9ynLly5cuXLly4cCSf7bQdoKVU4bOPK8NAgQIECBAg1mSM4LFixYu3Pudqa6sXGsbywJl1jvDQIECbiCOtqS/ulhoEBQbO1MFs/Cr0qNYDpgc2auIj3iSDqtutNRotGoFxCXWJ7xGNAjrakwFqQW7ew0BQ0hAhmNoE+Q7akwt20shXU1Bra/+ggh6zJAgKGkHy8MZxPgF8kzN8i6Kik/4xRoiIgrakwF30nU/8kTUmA48rw0CBAgtRtAgQIECDWZHzYEhCtNqqzLo8Wq2CxYsWLFixYsWLFhGgMsYO4HhtD7TPfcpy5cuXLly5f2MxVv0XlqQtbXJ7LQgyRjMoN5BYsWLFixY7cFixbBf94tSFHHZcgXJg207rdixYsW8LQxZx5XiMaNLDQIGkwbraq97ld+sOfxizZ2lRZaCGgQIECBAgQMKEAFgisgTAcoySf7akwWoYt1zZvRPeGgQIEQTPtTVTwR3KczN8mRTjGkFixYsWLFixYsWLFlG1/stx0T3hoECBAgaZixYsWLFixYsWMHnN2vY+KEB+7/nz/tqTAtUsBGGie8NAgQIECBAgRCthlhwP3TQwR1PIsxb9sA3vPMzbXhoECBAgQIECBAiEuUGzGtPQyjsJgOUiiy1ILFixYsWLFixYsWMHvBV1v5i7UOmWLFixYsWLFixYsWLFixYsWLFjB/0EENAgQIECBAgQIECBAgQIECBAgQIECBAgQIECBAgQEgAP797w3ZM/dP/rDWfLyjQzI38YyrmOE8Ve+1PwZ7tsDjmKtNa52BnGY/gOh0atkMYjriJSKkWuoxwp9bkO8SFNGkrjTDxrLQ0u/spQAcSQqvWot7ONJNUk6GN52Q4eZz70OY0dx87Iz83F39lKAB8pX7IGCv6QKSlNnY/WIDZMlhigQw1VWjQAFcIfJyyhNJb14sK9fPA+KoEPHMZkf5aAAC4YwSk6g6HJiHGifnN29zpfFT0xvgvFArdAAAHf32X15Ge6GY4eK4ZK4qi9XwXigWX6AHoF8HR8ac1PLYBdHl/iMNMH9qqtKh8F4oFl+gGMor/uyAAqBD78OWPho1sXM9lZSpAGn39lKAKSQh7xUJBEfssKpt9eKCPaPaVTpACKevPJXhg5tpr2+7ffdMWwJsCrgPAAF0IHFemmuCxra1w/G3vAIy2AArzR1IAfdiPD5eJG94AzpAACa/wA6JSHkLzIqLwG/A5T0w8aqAAC9DsoYyfuzmw2I5KpbFxAAAAAox0GHRmMmHjWK05r6A2QiYAGY6Pl6K+fqVGIhHoZDxRAxwjTIySQeWhIMkEISJETLrgCCDSCHHLAypachH23lK3TZkQcMIqDUzjp6bASUoAAJcfzMOmDxlxLYdgNVA25AA776QRrYuLq2A+dIAwu4AASIxGDlyTQQAN0IS2M3WnCOM91b8XEAAAAALM6yvwAAAQIbOk3B+zi/P57ZrK9f3bt27du3bttoiOaI+t7jli3wRhKDUkRCadMxiP0T5+m0d2cSzOJGvNnc05lZgjgzMrqBMXyoW9lMhMD+ZrVG8C+KCoIrxdyMbh1TcMriuEjvKdCqVUBIskc13WXEzibBqNX2u1laMxlC72LWV9DQuuSXBXkUIWZWgRRbeHfinkc3ByecRcXWKWcFezgRWMXZ4usUh6Af7el5409KG65WPlQWdAWQoo0crZDR6keDzpPTFiHHEFj+QcyLJf0Oe0N3q8nt1CVJV0/aqwsL8rAD2ma1kguOAPKyBtJIwh0e8BqravukXNxTsCrGwx4nYHn9BNW2UY/+uz3atcHO6IbvIRIkmesg4pmEorOjD7RAeS0cd/Rjxz4xM1WgRf/vTcYfzz/0PgpizxIDAq8WhH0cTTuxcO+9Cjon+7j8L/N/o5VXwa/ZgZwD//sxGClKY5mr8txzJ3KQCgFYMeUUAwimaR20tWto1d+oh2Gm9dyk0x3O5gDAyxFA3KHcz60z6UOns3IzFopt4ib9A8dsbzdJz3WtsYVAr46noj1pghStfhe7B1rSD4u59lyUvAOpL9mFvfBib63uyT7zOXHuWyndFknip2DQKp/MW9+2rfr4ste/qr2Qh+NkWiBdxmcAhD0YoRQfGXjztfPceZ4HxijS+jg3Rj2xF9F/Q1GgLXrXvCphosyL1nBYt21caQHRDGe5yTM+upxAt5Y3J3QW9i/3KyRTcZB35iPpJlzoIPCFwkuTocZ2wwJNv4xwGoHZ+pY8q9BnlMAX5YXqnxTG7gbLVZ8xQT6PFwTJ7e5odftpIdjNe/mDolfwwFVCvxEDoRotpqBTydpSkx2AQDMLk8/0AKaD/nu6UWDasKolpztBt3DZLIC4NSatlfVvHkJ4TdJ8qUmfEsMdyXyKXB5DVmzlxbYIdFsWwNLRdENSo2cnk4QhA1I+qR06zCIEAf23+37aeGOugCTYrhQiz1cOfiIi0Ie0vMzSXJmp1yy/Q+lqdg0zpCVteIqBN01jLJ6RxkOdYhH68Hq5X6vtZGXHwgrLAzNW3kesleBWZ4oQydd23KIf7V4QPl1xYH3OgyvZY3SF/ndwOhib+IJq4yhcsjC3a07ATlBhTkCFoZXbTQD5hYIHrWU06QWNVz8MT5gM6rUSbt3WQke84PAdB5tdqKLalJB/zEvUOZp0ZWcOV1cNLPCc88frz1xwypbBDwV1j7re3UblqF9YCbk9RHoeH92IJ9bCF6D8bpkuvemnqzFVaH4JHmQmR00F1x6dmpwQF35/d3BTUxgjVj6YeOnWaosiOk1U+jMcaLNzzqOb0xXMDnelEGfP+kdkSLS0CKI7hgvvaSocKSkvohMwkw1CA/77YsCLkjybx/34JN8747Hu3oTF1fLHD3bwfbUd6quV6WSKw+EiH6rQH2teUTiH00d4tzFe58uqFxlrfpoadJCjNGfcSZ+RvjPo6uhUsxwHPF2eVLV4f8/rBUUADGx5fZSZ4CEU18YCzu4lXn0bFxKSkpTcHFkKX1XzKvxzxls0xTCiQTlV6GOt+je/5LLUOxOo6Jw4a8YyhDwPPF9Wjj2yMyiPXfNFiCZe5+SvS1U0z5Yqs5+PLG7hXMjBa2l3NRXvMSo1/pbv6pEjCea7ljatxSCRWCfEd8kMpwA/nbzFHDceGU0WZv/+PrzXlWLB+05UjeCDDbIVBF6uliEUod3oO0GDY7Ut0PMjyYrkKQ4GurRfHHfbOU+Q+rfXDoLVpF9kE8XkUyaO84PgTITmh06iltO633p0LoAWxVQeE1QkPqnBu3daeHUYsw5tPLA1CkwyIfcMudrLJuR7em/zlTmThaPIEkkB3jC3ijJXbslZt+TUO+eDwE8Hro6Prir6KmIGoejPZEg0SZvkAF9886rdtBBZKIp5onvTdQUC6vev5HJv3XAiUeRnR0FGhoRt8jX17DmwXUfzZfqnQdCwtH4++LLF6NcL46obSk8vIkwpGfp0w2+8ZEZGPnmF0q+NTiQR+z4x05j2vW1POiqAGL31SAklY6zsL6x1AQfdzsxuU92CuQBHTD8W0Yp5752xkUdQy3W47DkkTfGW86W7su+7mPK5mHtW+Op3ezafCJ9+ceq/xMTYoeBOT+z6GLQxPCByKD1u7KhSvbNle+hXghPLA1HgA3zwtbjbefEYxVyuaihChnY8DPJ3MOvWnzSSwhQSIFBruF+rovujs+eGgwFczg0UlzpC1C/7+87Ry5pstexHRG28euTKG/uObCukFfJHQcaJqW/905jbGbhScXHpwHP1pjtZ/wmjogMwT73ivcifDy0YBXmRf7MmtZhwbSQKxmRB5RiJbCRMdf/v4gWw8qsvnuQC8/CqE+mhz+W24MpgE6/PaIlYmWnILAeb+BDJk0b1SoOhGqqBL19/5DKRZ5QKk9Kx7qvJ1CsW45mrr5j/6MsHDVEdTsO7jYhbSZWlR1duiMYmzGGGHuC8Ae/WMOBd/4Vp70vN3T4xgM8S9jhBaLQRJEtNKQ5KEEgy0Kq/xHgdiRsUDK0H67uh+CkXbQ3bug4aLgdYAlpIu50VkZAHJf9ZaH4pR76sNvOQEBK3y8deffpvFNPu4mv0aL54feT1MkYZ60JberZIaw9zbW7TveG+noehTc9WDQ/r3jQXRtSsqZjyAvzh9ze4xC9LyQ+8Xz+UgWIcj1qxBLWaBU1rcX+Iwt859VdYTZr0VfTd0bhDvoz14P4Nzv/6A9PgqJOzVa/Ng6dEpTPshZgZdDtN/LL8M81vwZpuPQk6lhnM+KnuNgn8K0qn+V2sU6f18sir9lvNbq6nQ5yfR8Y27l26w0hwVgQGk69N09wDahkMAiyfK6KVQNdWIDtFQtmwWLN2jTj0dKIgJfC2U0B0rgdRi9RI1V7RNQVatpG7h57Sk3AqnztPdrX62fk/F0VoXIP6s6a6eqEjPIRCo4ZCBRQcbBKoko4rS82ThVr6bQ5huLOkDaeAHCFVIsVxKrPQusG5advPdcjYBb7HUUh+VDXulT1+1R6BWXBNMgqQlutCAgzetC0zrlWLe+rABfN82YcMAzkujsDXA6kwGmbrsNPOB0N2XV5lJ4Y270Ysefjs3mVYZ0x+pyknMyARhToe84PY3taRrwNooWVRJyH89Ia5qAyK/bvOFrTsqEMq1YUdxa0OntOuf1KciGN0JwMsbhoIXbGaj1GEMmqhWWnw4LMqWJgrBWCHNRnHfqs7uv9TpuzlPPvCXkW0Ta2bEOBfOyab1l+ANmgEQ8kov34H16Ar42lunXCdFkFglVWUN9wTwAnGKhJhctM3c5YO0cFlM3ZX1T+lFmGnrTs7GVbOD05ps1ri1xY/GSE38/70xU/mrbFyDKyDeWWTD6IkcJWwwM6gV5Gl244c3VOKZHGbnUTILQKh33a/+r8nqbOCLTt6BxjqZEP+58YZJMaWxfsU4a3q2KVTb1duo5sBchbTAtN61NToTNQduMFwm9ojXBmBMzhyjinD5z29zBR0W7b16+cAV9zgJZ76Qf1bwhvClEOKbfYHV2I/B7W1iPJYjXY5OK7CGSE8jhBtcWYNiYGReCZhoPUfhkaM9pqCmr/OROQYnuFcBNTHG+T20HSRI4SflRl8Thk9mczttv99Vdtf+rnPHPZ5rvB5pwEqWAX6xc38yFY1aE1FAoKsxfRs8oOv1RxyvGv9liFxU1+dfHPq/QWac3J058QsRwMnf/OEWJ3lv5JNQFWTDEKofJvl862StvVK51yL5pdeM5dJC4ClvyLzlJP9s0BMKMm2Z3JIQYvWmYVL+BkwYr4qn2wIQB0Slo/aDAcFA0+438cU1gCE/2cBv1ejO7YUXZPak+uflmgpxMU7+6mNFaE4+k0WEBZ7krE9vhJveqlfNGYdK2kpYjx5xPoa1dvrOwGavYmjfLtOltzFetJFooo5KqnsxWsKQ2PI5uYz4BM1fdQpgBjGN20QowHNioNTdlN9Xipdaj8jXpO7DBeU7ASyE+/EwhCpcgJ7YLtRxLnNLihwNLN492GoHr+hJ2oa6Ac9iZKuWSdHF4d1ejQew1uiHeshNG5SYyPg8M8Gv+pMrfO2z3cM8DgfJawyaFmsZtbR05IqFDvX8teNyWAw9EK38O6cIXLIFBULRWBXtFKtrfg6czJwmZRhWlZaBi4tpBpGXGK7U5fpzzU80tayQFaOHqBQ4acTf4CyWKLo+uLIAZvQeQ3xap/7EAlUNcXf5Sd1X9pjRKt+hg+App6/jopIW0ifW0FtAhrDbXr4cLUV0SRbg/XwBbocnkjty/BKvTjPwwHNwI1L63JCXJDBrdkqkeTG0w/mU9k2LyoAe466Vpu6F9dZt20JNcVoS+BjM4mrHcO8vEZUQIvLFwfxb+rpsuEELVXzzex6q6AvNn/XsOFezju9bUUzv/ruOitpQd/I13Btan92EsOFqLrEsv9RrNOjdAlUR6t9/WE1swFi7rndJQGxQRp/aZireiiWTAShSuto/tQfDiaCPQ+EHnOkoztP/ZtZTfWYQ5heaSuDkxRICffaEWPHalWZY73rECRuEqpXiRSsa8+1BN1lAXiGiYpAkOQ2XaHExRpivgRpu1VLW5j7SltGx367ffR8ZAxRVmW8HwL+UN0Pb8J0C/wVoa96frz+Dc2fX+T+ZGcpFFvVH/qAbMR6nd0UypITGjaQgzvy86IVELJnCniKahJAsTvlL41H1dlxwB3LnK9tf8/7lXf7vZTUOWEL2hY/e48AnKt+Rv2upwA4DFGAdM2Bz9POvbgdEOsV+a1AtlcSLaIMAZlfid6bavaeHOcVEGxl4c3Qb+vRRLr7YyTpMukYrGjiT+dViltsh6Rn9A3cy24bTPWvq/jEpZfsFdqxy1jOaXbvbmgEOwkTCQcZZQzvEHpeR8CPWVxgvdcO+BG76LWBxpvQOO5g3Gfj3com5Fu89/FbdtpwkvWmPjDe04BD+0Y0UVCDzV0hkdVUg1bNBI66StGVXmqvH7M5try4PxxvlW+zok/uetqNoG88xvVk2WgrrSnVZnHk/leiyxcJuUNLKv4LcUrhimYJUk50yfxDqpM5yYu+lY3J9V7hk1qWEkHNjiU08MEeuZQJT+aiatkmzf+LDk9QSYLIAoi2n0kVg7VoAlrffDAQAfs1eJfE9mx2QED76S/kk2jx9PkhUQWmx6i5mEPWpOxvOJwtoaKMcIRtRCU+53bARqoSVvqzUG6zHY/Gi4BegH2IFzvXrK6yhDZ3TiSohNXc9yUT3LB6rPK/cR+h/J3pCGaa0qgwTxZ6ab6zdFeMDsLVrrlcI4wKhpdOz/u3plwflrJ8MHciozY8z5E+G8ZTWRPwsTnJ0cRweZhnopsCTjmUrGv0G+Ngm28rJuuFOOyZx5Gtb7IJtiMjIhX9104HcO33HJhzZ4aPxgZ/ABtqbDzhQJjEl+VLS3ez7NtI/jzjGsO8YabA5lXBu0UoWaHoq8M4OrY631TbALGA83LB/G4l2hAdYJnv/9lvALt10VyytLK0eCAZmMRT8vFJvpxoc9w2G3XmkqqPs8dqRzwZcB/qRScvKfL3TushJNGYSbR0mjpurw7AvT+7jzN61iToVfYGDQCEx+NSqwQ/3dJhxRxEJhwHbPFGY09kxXfrVQDzl72niim4Qn+yjFLr838Xh/iW7ILzIkR9wNKGQghZCt1LZAk9rJNBxNFnwqdUBG/usgp55c/kTM/n44o1VL4gm+EEJhFJhuAIj8+rgafE2YoxZbV0VB32deIsWELDm/N2JWQbTTNzXc+S1ezDm5bx5RL/1AOHrotU04bSqfVgIqrAvpsfIs1CaeB4QfGjcdosTVcd9/HuMqU8Zt1YlG/Pkh0P8Auxk5UEiK4JZDgYwxmXasZnSXOaO7YHXQOQanBteWU4Rg1DQvZ4/Zs7hAJ9FRIowdsk8VvE77HVSBpE9s+K0nIKraqm27fupiByQ7D0n42DpgVhDntSVSMWOX4ezz4LE8IT2/jRSARBXVFhUArFsCOTiGSSaGmQ5wRRGPDOTiqDHIabmLiNS0UsDa2K01hkdCYQnukSIsNwG+TSE6JzxwBz6TsvuiNY8/Ge53MkP9QKVT1uWnAPfite0WShPLcjMHgnDqYhu1hDyzylLHcyOrfj4PzSC0YgSDo1H+nVrEIYLrgwe4fGL3lpxCw6Yqp/qBSi1tKrDz3yusI5JGWyurnhLhF6IUtdKmMEeB47F+7857veAIYqPa18A2Mt0f3rMm0/+GkJPZHjnhmL9hjyQX9WuvKdYSWM79l6RmJUMz6mMH6shHKqd8bj5PTzxYUiHc9eo+0kPMR7WzinyBsQ4DPiSTA35vznwisztj3uvcb+pJc3+y9zcrfwbX65b9Dk7GMVWGd+qKjIWiw6sSz77t1e4hRkQDX+JZFMw9Jn62YP9fn/nH7CWFFs4UL8zad4ArbFtqVx16G+cLcFa8zrz3+6M5hb4SnK0wgU8sfZy2c6BJyCrP3BFQItdEqVzDFnlbwGXKXrW/Lqp04A0wtUQT/rwWlJN+CSIkEs1VGtI4BwHPP4ee/SiO6e5EXlkr1UOHwoimPqmo1HqRrVVOWzoEus1MU7zRBUGeW6XJ2+p4+CBE4I2IXzkLK0D9lGIucuoCouRGv8CHsOBOgCDKY7M9+tZQig5fvVPyBX+t6n05hPcuUWmEvBt5mWyxe546DU1bCZYS8X0/fRp7CiLgy3X+Ju3seTAkOx2BqSk2JejeSn0m7pX+jlo/qQm1HTSkC1MCyNC4od4IC9ALJ/XLl6k8xyn2UsTPxXp7HWjI7vjDgbAbkSx9AAAvKnUgNI2KhB0sUdc5Dt4N/TT+RSjKXRfjYG85GOFlZnQoYx45rIsEtdLF1A19t9r/OomH9eAXKgjQsf3qEY8sKsCNX8jOs86DkbJeHjkdthSp/V0s3BIRFU3ipkbmXHizZ/ybJjZEZlNOZH3UFqtMz9zrEZH+JCrjIBoaIQbN20/lHfjVe9nUQjO+Y4IL+iWydY/zPBO6ipWN0Nysp1bFXeDWRjKEBl5NcgMYOFnPsVJnZYLKPCwPRCc1wZPT3S5ZMx1h/kBPHM3Nj817wQTEZGamybTXxkAF998OOLGwlZcy5a2SJEiRIkSJEiOtpfWT9qnvway/9e/LAh74lHp2WHrGVOx7bT0KVEjyq1nPxidAH7xrKOa0BsHhZbYsj1o+/BDGoa7h3bDOnNRafUVPGvI8i41Zb+lyYjdGOZNCMorUVcYzLPl9tXZELCk4lpYsLhqbHG5M6NH5nQsnJvxxLRugFS9bw1HuCMeqRmHEbdiBkrxB6B0zpS+hkJDzfL1XO7kFRKaUlgAAAAALnxTjeAK/iFAwAB1qTgA0ocAAA1WPGvTnl48AAAY3aJLxZlyb2wAF9uK9UBUwAFNszJW7+oFtqAAQRiLEKxQd+QMAACOsEKMog3gPKOABshXmBWHEAAAAGrUkqE8bMqswYrggDXW4dCNS265RwFREBYRa6P8hjmUucsGltg4xAoRp4fK/Qo4rlzABnyFCZhCb5DkTSd3gKH5BTfyBgSIUFSqV0V8YnF/TWnuA+TI25k3MboNDEbGNFaGQQ04EG8EIAGzV+kmibx2+kbWzq5ABlCgU+XqpxpZNqcszMAAALB7Vcqa9ls82KhKw+6wiAAPHUZMVb22O22/f70FdtCxkICAAjuIfY0jv0sb1sZVjITSkjbQcgANrmp+D8rDkMzL3QJGcLhgwgAM50IslRGuuLtQCP9/D5aW3FhQCA3SKLsQzU62JccTLR1SnDNgA4y/phE3BgB0iiMyqO/PPCgbqkEO6mZUvGpJe7oSSjY8XuFS0PAwBLtHUrerGKYDcgFYELulDKOUVNVEqnN/8qjZjhAAALlmABDdA/12rRG0d4PbD0qdBFtEXp/CAACWu7CXmOTueYUjFeI6mwC1Ic6uIOXHwAFOchENtn3QP9drLZbTlX5icFjmzkjODFu5ArQgANUgprpOYkEHn6gC2ULX93C6wOV7V8dk8tlSVFZ/ATJCAfNSHFfORoOG++sBP7n65Qvi2apRZAUQddvKsT0bYgE/Rs5CyEYbehP9CCM/Mknzo0u4PBC50LOPkD8cH9mQeg4TLsy9QiTXWga4T+a7gjB4mtz9ingLxO/nZiFmkrp5CXzh+fJh/X5YEXDfZ9Sa7gjCFTM+7JItxahDioEt8otPh1JgzPHfyFkmTDQPVQo4ACYyI6LIKK70TJnkMxqEOKFc95k9hUvfB1EMLN9xo0rAslK2VvViQG0/gjku/qDDYqsqh7vwTcEaQcLlU9R90g0YT5xClbk+hjeh1wFziwdNdHuOKoAAalmWN3m7hVoj8dliyHuCKvUfdIMa513hgC8b6Y00OWoaRmUUOuXfh0cZzeQAIVXO/FGq0SC+pQC7NKKrn6+S6YIE0jTaHG+dO/k9Tq4C6yFmbPlxlLHQIqBU2dXXGUo6uDrxR1mtz1H3SDGkarckjWK3R0wKXRNQ2MQH/sABnauuKhIBGQzBe9aQRXJDCiK8JkZKDHv3U5pswbJgrm2Vw0nQmKX9gKH6dIHNqITHJmDkUfZLeVrQzFMYQJ4SeCwJlJEYKm1FRoOC0lSwB7WrWdqScVBeL5wwWM0yQInK8T794RLw9Nvkm3A0/zX/x5huCSva06jCWWmOZYStMghfYI9HVbPsEEimhacl4MzbPdijD6lZYbHfSi+9FYsZeQhG7NMckw8iEALpgnlIanmtN2AFmqBbl2cc2kA8Ti2ibQCnIrVab1WoAEY/6yOYVRC3ORQHgAI32CSgxhfX083qEUZ4APyVlfmvrcQtlGjT/yRzvBNQqJr+7D8QkcAADQp5UGMLmOxf1it0+xQf82Af5mSB0/5EapIYCRkfBQI9cNjPyfZb+7EXwMllAAALPmd51i6i+9KbLHXbrD04mSBQQd4gYxHYEGzfqXRTJE6Ny1v0OAuQtAAAAAdu2V0Fufs0lL19mrgBvwweFo8KnGKlkcZCAAAAGdLRHmgdnOPxCbc45U7yDlYU2NeXSOqUWY8DqE8/Q4B3HWzu8dAAAAAAAAAAAAAAAAAAAA==)
+    center center/100% 100% no-repeat;
+}
+.cells {
+  pointer-events: none;
+}
+.battery {
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+.battery:focus-visible {
+  outline: 2px solid #abffdf;
+  outline-offset: 4px;
+}
+.stats {
+  background: linear-gradient(#0a3029e8, #041813f2);
+}
+.battery-title {
+  font-size: clamp(15px, 4.2vw, 20px);
+}
+.greenbar {
+  background: linear-gradient(#55f9b5, #00945d);
+}
+.redbar {
+  background: linear-gradient(#ff7279, #b71d32);
+}
+.app {
+  min-height: 100dvh;
+}
+@media (max-height: 730px) {
+  .stat b {
+    font-size: 21px;
+  }
+  .battery-title {
+    font-size: 16px;
+  }
+}
+.battery-wrap {
+  margin: 0 12px 0 2px;
+}
+.battery-title {
+  margin-right: 0;
+}
+header h1 {
+  padding: 0 64px;
+  text-align: center;
+  font-size: clamp(17px, 5vw, 26px);
+}
+.settings-open,
+dialog {
+  border: 1px solid #397b69;
+}
+.settings-open {
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: #0c2927;
+  color: #d7fff0;
+  border-radius: 10px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 650;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}
+dialog {
+  color: #f5f9f9;
+  background: linear-gradient(155deg, #102d29, #061419 80%);
+  border-radius: 22px;
+  padding: 18px;
+  width: min(94vw, 440px);
+  max-height: 94dvh;
+  overflow: auto;
+  box-shadow: 0 20px 70px #0009;
+}
+dialog::backdrop {
+  background: #000a;
+  backdrop-filter: blur(5px);
+}
+.setting label,
+.settings-head {
+  display: flex;
+  justify-content: space-between;
+}
+.setting label {
+  align-items: baseline;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.settings-head {
+  align-items: center;
+  gap: 10px;
+}
+.settings-head h2 {
+  font-size: 23px;
+  margin: 0;
+}
+.done {
+  background: #20dba0;
+  color: #04251d;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-weight: 750;
+}
+.settings-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 5px;
+  margin: 18px 0 14px;
+  background: #071c1c;
+  padding: 4px;
+  border-radius: 12px;
+}
+.settings-tabs button {
+  background: 0 0;
+  border: 0;
+  color: #a7c2bd;
+  padding: 10px 3px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.settings-tabs button[aria-selected="true"] {
+  background: #174b3e;
+  color: #a1ffdb;
+}
+.setting {
+  margin: 0 0 17px;
+}
+.range-tile b,
+.setting output {
+  font-variant-numeric: tabular-nums;
+}
+.setting output {
+  color: #53f9b5;
+  font-size: 20px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.adjust {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.adjust button {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 1px solid #3b6f62;
+  background: #102e29;
+  color: #d6fff0;
+  border-radius: 10px;
+  font-size: 23px;
+}
+.adjust input {
+  width: 100%;
+  min-width: 0;
+  accent-color: #39e5a3;
+  touch-action: pan-y;
+  height: 35px;
+  margin: 0;
+}
+.setting-summary {
+  background: #0b2925;
+  border: 1px solid #28554a;
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  color: #b5d0c7;
+  font-size: 13px;
+}
+.setting-summary strong {
+  display: block;
+  color: #effff8;
+  font-size: 23px;
+  margin-top: 3px;
+}
+.settings-footer {
+  font-size: 11px;
+  color: #93b2a8;
+  text-align: center;
+  margin: 12px 0 0;
+}
+.day-track {
+  height: 13px;
+  display: flex;
+  overflow: hidden;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+.day-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9ebdb3;
+}
+@media (max-height: 650px) {
+  dialog {
+    padding: 12px;
+  }
+  .settings-tabs {
+    margin: 10px 0;
+  }
+  .setting {
+    margin-bottom: 9px;
+  }
+  .adjust button {
+    height: 34px;
+    width: 34px;
+  }
+  .settings-footer {
+    margin-top: 7px;
+  }
+  .setting-summary {
+    padding: 8px;
+  }
+}
+.app {
+  gap: clamp(5px, 1.1dvh, 11px);
+  padding: 10px 15px;
+  justify-content: space-between;
+}
+.gauge {
+  height: clamp(145px, 25dvh, 235px);
+  min-height: 0;
+}
+.flare {
+  margin-top: 5px;
+}
+.range-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.range-tile {
+  --c: #24dca1;
+  min-width: 0;
+  border: 1px solid var(--c);
+  border-radius: 14px;
+  text-align: center;
+  padding: 7px 2px;
+  box-shadow:
+    inset 0 1px 0#ffffff55,
+    inset 0 -2px 8px color-mix(in srgb, var(--c) 25%, transparent),
+    0 0 10px color-mix(in srgb, var(--c) 22%, transparent);
+}
+.range-tile span {
+  font-weight: 700;
+  color: #e8f5f2;
+}
+.range-tile b {
+  font-size: clamp(24px, 7vw, 35px);
+  color: var(--c);
+  text-shadow: 0 0 13px color-mix(in srgb, var(--c) 45%, transparent);
+}
+.range-tile small {
+  font-size: 10px;
+}
+.range-tile:first-child {
+  --c: #3ebcff;
+}
+.range-tile:last-child {
+  --c: #ff586b;
+}
+.range-breakdown.nopeak {
+  grid-template-columns: 1fr 1fr;
+}
+.range-breakdown.nopeak .range-tile:last-child {
+  display: none;
+}
+.battery {
+  border: 3px solid #c9e4df;
+  border-radius: 17px;
+  padding: 6px;
+  background: linear-gradient(155deg, #54716f 0, #071716 13%, #020c11 82%, #758d91 100%);
+  box-shadow:
+    inset 0 0 0 2px #35575a,
+    inset 0 0 8px #000,
+    0 0 0 1px #729d99,
+    0 0 13px #2cf2b650,
+    0 3px 8px #0009;
+}
+.cells {
+  height: clamp(31px, 5.9dvh, 54px);
+}
+.cell {
+  border: 1px solid #65818b;
+}
+.battery-title {
+  margin-bottom: 5px;
+}
+.current-section .battery-title strong {
+  color: #43baff;
+}
+.current-section .battery {
+  box-shadow:
+    inset 0 0 0 2px #35575a,
+    0 0 10px #27afff35;
+}
+.stats {
+  font-size: 9px;
+}
+@media (max-height: 700px) {
+  .app {
+    padding: 8px 12px;
+  }
+  .gauge {
+    height: clamp(120px, 23dvh, 180px);
+  }
+  .range-tile {
+    padding: 4px 2px;
+  }
+  .range-tile b {
+    font-size: 25px;
+  }
+  .range-tile small {
+    font-size: 9px;
+  }
+  .cells {
+    height: 29px;
+  }
+  .battery {
+    padding: 5px;
+  }
+  .stat b {
+    font-size: 20px;
+  }
+}
+.cells {
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  gap: 2px;
+}
+.cell {
+  border-radius: 4px;
+}
+.app-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 3px;
+  border: 1px solid #37665f;
+  border-radius: 13px;
+  background: #061c20;
+}
+.app-tabs button {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 7px;
+  color: #a9c9c4;
+  background: 0 0;
+  font: 700 15px system-ui;
+}
+.app-tabs button[aria-selected="true"] {
+  background: linear-gradient(#146c50, #08392e);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 1px #63f5b5,
+    0 0 8px #24e7a340;
+}
+#chargePage .range-tile.inline-unit > small,
+.app [hidden] {
+  display: none !important;
+}
+.charge-page {
+  display: contents;
+}
+.journey-page {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+  justify-content: space-evenly;
+}
+.journey-hero {
+  text-align: center;
+  padding: 8px;
+  border: 1px solid #35937e;
+  background: linear-gradient(#0c3831e8, #041916e8);
+  box-shadow:
+    inset 0 1px 8px #27e7a333,
+    0 0 15px #00dd9822;
+}
+.journey-hero .profit {
+  font-size: clamp(38px, 12vw, 59px);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: #50f5ad;
+}
+.journey-hero .loss {
+  color: #ff707b;
+}
+.journey-hero .jline {
+  display: flex;
+  justify-content: space-evenly;
+  margin-top: 6px;
+}
+.jlegend b,
+.jline b,
+.jtrack i {
+  display: block;
+}
+.jline b {
+  font-size: 19px;
+}
+.jtrack {
+  display: flex;
+  height: 16px;
+  overflow: hidden;
+  background: #253940;
+  border: 1px solid #56736e;
+}
+.jtrack i {
+  height: 100%;
+}
+.jlegend {
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+}
+.jlegend b {
+  font-size: 16px;
+}
+.jcontrol {
+  padding: 6px 9px;
+  border: 1px solid #315f55;
+  background: linear-gradient(#12372de8, #051c1be8);
+}
+.jcontrol label {
+  display: flex;
+  font-weight: 650;
+}
+.jcontrol output {
+  color: #62edb6;
+  text-align: right;
+  white-space: nowrap;
+}
+.jcontrol input {
+  accent-color: #28dca0;
+  height: 23px;
+}
+.jcontrol .adjust,
+.jpublic {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.jcontrol label,
+.jpublic {
+  justify-content: space-between;
+  gap: 6px;
+}
+.jcontrol button,
+.jpublic button {
+  border: 1px solid #3b7366;
+  background: #10352d;
+  font: 700 16px system-ui;
+  padding: 4px 10px;
+}
+.jnote,
+.jstatus {
+  text-align: center;
+}
+.jnote {
+  font-size: 11px;
+}
+.jstatus {
+  font-size: 13px;
+  font-weight: 650;
+  color: #ffbc75;
+}
+.jstatus.covered {
+  color: #54edac;
+}
+.stopnav {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+}
+.stopnav button:disabled {
+  opacity: 0.35;
+}
+.app:has(.journey-page:not([hidden])) {
+  justify-content: flex-start;
+  padding-inline: clamp(10px, 3vw, 18px);
+}
+.journey-page .jcontrol {
+  flex-shrink: 0;
+}
+@media (max-height: 740px) {
+  .app,
+  .journey-page {
+    gap: 5px;
+  }
+  .jcontrol {
+    padding: 4px 8px;
+  }
+  .app-tabs button,
+  .journey-hero {
+    padding: 5px;
+  }
+  .journey-hero .profit {
+    font-size: 36px;
+  }
+  .jcontrol input {
+    height: 20px;
+  }
+  .jcontrol button {
+    padding: 2px 9px;
+  }
+  .jnote {
+    font-size: 10px;
+  }
+}
+.app:has(.journey-page:not([hidden])) .journey-page {
+  flex: 1 0 auto;
+  gap: clamp(9px, 1.6dvh, 18px);
+  min-width: 0;
+}
+.journey-page .journey-hero {
+  padding: clamp(12px, 2dvh, 22px) 9px;
+  border-radius: 20px;
+}
+.journey-page .journey-hero small {
+  font-size: clamp(15px, 4.3vw, 19px);
+  font-weight: 650;
+  color: #d2e5df;
+}
+.journey-page .journey-hero .profit {
+  font-size: clamp(48px, 15vw, 75px);
+  line-height: 1.08;
+  margin: 3px 0 8px;
+}
+.journey-page .jline {
+  gap: 5px;
+  margin-top: 9px;
+}
+.journey-page .jlegend > div,
+.journey-page .jline > div {
+  flex: 1;
+  min-width: 0;
+}
+.journey-page .jline span {
+  font-size: clamp(13px, 3.7vw, 17px);
+  line-height: 1.2;
+  color: #c7ded8;
+}
+.journey-page .jline b {
+  font-size: clamp(20px, 5.8vw, 27px);
+  margin-top: 4px;
+  white-space: nowrap;
+}
+.journey-page .jtrack {
+  height: clamp(20px, 3.5dvh, 30px);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.journey-page .jlegend {
+  font-size: clamp(12px, 3.8vw, 17px);
+  gap: 5px;
+  line-height: 1.3;
+}
+.journey-page .jlegend b {
+  font-size: clamp(20px, 5.8vw, 28px);
+}
+.journey-page .jstatus {
+  font-size: clamp(15px, 4.4vw, 19px);
+  line-height: 1.3;
+  padding: 3px 0;
+}
+.journey-page #journeyControls,
+.journey-page #stopSliders {
+  display: grid;
+  gap: clamp(9px, 1.5dvh, 16px);
+}
+.journey-page .jcontrol {
+  padding: clamp(9px, 1.5dvh, 15px) 11px;
+  border-radius: 15px;
+}
+.journey-page .jcontrol label {
+  font-size: clamp(16px, 4.6vw, 21px);
+  line-height: 1.25;
+  align-items: baseline;
+  flex-wrap: wrap;
+  row-gap: 3px;
+}
+.journey-page .jcontrol output {
+  font-size: clamp(17px, 4.9vw, 23px);
+  font-weight: 750;
+  margin-left: auto;
+  white-space: normal;
+}
+.journey-page .adjust {
+  margin-top: 7px;
+  gap: 10px;
+}
+.journey-page .jcontrol input {
+  height: 36px;
+}
+.journey-page .jcontrol button,
+.journey-page .jpublic button,
+.journey-page .stopnav button {
+  min-height: 44px;
+  border: 1px solid #3b7366;
+  background: #10352d;
+  color: #fff;
+  border-radius: 10px;
+}
+.journey-page .jpublic button,
+.journey-page .stopnav button {
+  font-size: clamp(17px, 4.6vw, 20px);
+  padding: 6px 12px;
+}
+.journey-page .jcontrol button {
+  min-width: 44px;
+  padding: 0;
+  font-size: 25px;
+}
+.journey-page .jpublic {
+  font-size: clamp(17px, 4.8vw, 21px);
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.journey-page .jnote {
+  font-size: clamp(12px, 3.6vw, 15px);
+  line-height: 1.4;
+  color: #bdd5ce;
+}
+.journey-page .stopnav {
+  font-size: 17px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+@media (max-height: 740px) {
+  .app:has(.journey-page:not([hidden])) .journey-page {
+    gap: 8px;
+  }
+  .journey-page .journey-hero {
+    padding: 10px 8px;
+  }
+  .journey-page .journey-hero .profit {
+    font-size: clamp(44px, 13vw, 60px);
+    margin-bottom: 4px;
+  }
+  .journey-page .jcontrol {
+    padding: 7px 9px;
+  }
+  .journey-page #journeyControls,
+  .journey-page #stopSliders {
+    gap: 7px;
+  }
+  .journey-page .adjust {
+    margin-top: 3px;
+  }
+  .journey-page .jline {
+    margin-top: 5px;
+  }
+}
+.battery .cells {
+  height: clamp(42px, 6.5dvh, 60px);
+}
+.battery {
+  display: grid;
+  grid-template-areas: "face";
+  align-items: center;
+}
+.battery > .battery-percent,
+.battery > .cells {
+  grid-area: face;
+  min-width: 0;
+}
+.battery-percent {
+  z-index: 1;
+  justify-self: center;
+  align-self: center;
+  color: #fff;
+  font-size: clamp(28px, 8vw, 40px);
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  text-shadow:
+    0 2px 4px #000,
+    0 0 5px #000,
+    1px 0#000,
+    -1px 0#000;
+  pointer-events: none;
+}
+.jcontrol .jbattery {
+  flex: 1;
+  min-width: 0;
+  margin-right: 9px;
+  padding: 4px;
+  border-width: 2px;
+  border-radius: 12px;
+}
+.jbattery .cells {
+  height: 42px;
+}
+.jbattery:after {
+  width: 8px;
+}
+.jbattery .battery-percent {
+  font-size: 30px;
+}
+.jbattery:focus-visible {
+  outline: 2px solid #abffdf;
+  outline-offset: 3px;
+}
+@media (max-height: 740px) {
+  .battery .cells {
+    height: 39px;
+  }
+  .battery-percent {
+    font-size: 29px;
+  }
+}
+#chargePage .range-breakdown,
+#chargePage .range-breakdown.nopeak {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+#chargePage .range-breakdown.nopeak .range-tile:last-child {
+  --c: #708984;
+  display: grid;
+}
+body:has(#journeyPage:not([hidden])),
+html:has(#journeyPage:not([hidden])) {
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.app:has(#journeyPage:not([hidden])) {
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100dvh;
+  overflow: hidden;
+  justify-content: flex-start;
+  gap: 8px;
+  background-position: center clamp(20px, 4dvh, 40px);
+}
+.app:has(#journeyPage:not([hidden])) > .app-tabs,
+.app:has(#journeyPage:not([hidden])) > header {
+  flex: 0 0 auto;
+}
+.app:has(#journeyPage:not([hidden])) #journeyPage {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  gap: 10px;
+  justify-content: flex-start;
+}
+.journey-summary {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #35695c;
+}
+.journey-summary .journey-hero {
+  padding: 8px 7px;
+}
+.journey-summary .journey-hero .profit {
+  font-size: clamp(38px, 11vw, 56px);
+  margin: 2px 0 4px;
+}
+.journey-summary .jline {
+  margin-top: 4px;
+}
+.journey-summary .jline b {
+  font-size: clamp(18px, 5vw, 23px);
+}
+.journey-summary .jlegend b {
+  font-size: clamp(18px, 5vw, 24px);
+  margin-bottom: 0;
+}
+.journey-summary .jtrack {
+  height: 18px;
+}
+.journey-summary .jstatus {
+  min-height: 2.6em;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: clamp(14px, 4vw, 17px);
+}
+.journey-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 2px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #347b66 transparent;
+}
+.journey-scroll > * {
+  flex-shrink: 0;
+}
+.journey-scroll .jnote {
+  margin-top: auto;
+}
+@media (max-height: 680px) {
+  .journey-summary {
+    gap: 4px;
+    padding-bottom: 4px;
+  }
+  .journey-summary .journey-hero .profit {
+    font-size: 36px;
+  }
+  .journey-summary .journey-hero {
+    padding: 5px;
+  }
+  .journey-summary .jlegend {
+    font-size: 12px;
+  }
+  .journey-summary .jstatus {
+    font-size: 13px;
+    min-height: 2.5em;
+  }
+  .journey-summary .jtrack {
+    height: 13px;
+  }
+}
+.app {
+  background-color: #041416;
+  background-size: 100% auto;
+  background-position: center clamp(12px, 3dvh, 30px);
+  background-repeat: no-repeat;
+}
+.journey-summary .journey-hero {
+  background: linear-gradient(180deg, #07251fa8, #0419169e);
+}
+.range-tile {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--c) 14%, #06151a99), #041115a8 75%);
+}
+.stats {
+  padding: 7px 3px;
+}
+#chargePage .cell.charged {
+  animation: cell-breathe 3.6s ease-in-out infinite;
+  animation-delay: calc(var(--cell-index) * -0.12s);
+}
+@media (prefers-reduced-motion: reduce) {
+  #chargePage .cell.charged {
+    animation: none;
+  }
+}
+#chargePage .charge-plan-card {
+  height: 166px;
+  display: grid;
+  grid-template-rows: 32px minmax(0, 1fr);
+  gap: 5px;
+  padding: 8px 11px;
+  border: 1px solid #69b6a1;
+  border-radius: 17px;
+  background: linear-gradient(155deg, #20483ddd 0, #0b2726ef 33%, #07181dee 70%, #102d29ed);
+  box-shadow:
+    inset 0 1px 1px #baffdc70,
+    inset 0 -1px 1px #3dd5a54d,
+    0 3px 12px #0007,
+    0 0 12px #12c99124;
+  min-width: 0;
+}
+.charge-plan-card .tariff-head,
+.cheap-confirm {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.charge-plan-card .tariff-head {
+  gap: clamp(6px, 2vw, 14px);
+  border-bottom: 1px solid #78b4a345;
+  padding: 0 0 4px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.tariff-head span {
+  font-size: clamp(9px, 2.7vw, 13px);
+  font-weight: 750;
+  letter-spacing: 0.025em;
+  color: #b9ddd3;
+  line-height: 1.2;
+}
+.tariff-head strong {
+  font-size: clamp(17px, 5vw, 24px);
+  line-height: 1.15;
+  color: #80ffc6;
+  text-shadow: 0 0 12px #21ed9b55;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.025em;
+}
+.charge-plan-card .charge-options {
+  display: grid;
+  grid-template-rows: 34px 34px 18px;
+  gap: 4px;
+  align-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+.charge-plan-card .charge-options.single {
+  grid-template-rows: 1fr;
+}
+.cheap-confirm {
+  flex-direction: column;
+  gap: 5px;
+}
+.cheap-confirm strong {
+  font-size: 24px;
+  color: #81ffbf;
+  line-height: 1.2;
+  text-shadow: 0 0 18px #1ee69b55;
+}
+.cheap-confirm .actual-times {
+  font-weight: 750;
+  line-height: 1.2;
+}
+.plan-option {
+  display: grid;
+  grid-template-rows: 21px 11px;
+  gap: 2px;
+  min-width: 0;
+}
+.option-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+.option-name {
+  font-size: clamp(12px, 3.6vw, 15px);
+  font-weight: 700;
+  white-space: nowrap;
+  color: #e1f0eb;
+}
+.option-clock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: clamp(17px, 5.5vw, 24px);
+  line-height: 21px;
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+.option-bar {
+  display: grid;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  gap: 2px;
+  height: 11px;
+  padding: 1px 2px;
+  border-radius: 5px;
+  border: 1px solid #587e77;
+  background: #020d10;
+  box-shadow:
+    inset 0 1px 3px #000,
+    0 1px 3px #0008;
+}
+.option-bar i {
+  min-width: 0;
+  height: 100%;
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 1px #ffffff80,
+    inset 0 -1px 1px #0006;
+}
+.charge-options .cheap-time {
+  color: #69ffbf;
+  text-shadow: 0 0 8px #20dc9740;
+}
+.charge-options .peak-time {
+  color: #ff7885;
+  text-shadow: 0 0 8px #ff405044;
+}
+.duration-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  font-size: clamp(12px, 3.7vw, 15px);
+  font-weight: 750;
+  line-height: 18px;
+  white-space: nowrap;
+}
+#chargePage .range-tile {
+  container-type: inline-size;
+  display: grid;
+  align-items: center;
+  padding: 6px 3px;
+  font-size: 14px;
+}
+#chargePage .range-tile > small {
+  align-items: center;
+  justify-content: center;
+  font-size: min(17px, 9.2cqi);
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #dcebe7;
+}
+#chargePage .range-tile.inline-unit b {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 5px;
+  line-height: 1;
+  font-size: min(35px, 26cqi);
+  white-space: nowrap;
+}
+#chargePage .range-tile.inline-unit b::after {
+  content: "miles";
+  color: #dcebe7;
+  line-height: 1.1;
+  transform: translateY(-2px);
+  text-shadow: none;
+  font-size: min(18px, 12cqi);
+}
+#chargePage .range-tile.inline-unit {
+  grid-template-rows: auto 1fr;
+  gap: 4px;
+  justify-content: stretch;
+}
+#chargePage .range-tile.inline-unit > span {
+  margin-bottom: 1px;
+  white-space: nowrap;
+  font-size: min(13px, 10cqi);
+}
+#chargePage .premium-confirm {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 12px;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 12% 50%, #23c78d22, transparent 56%), linear-gradient(155deg, #173e3470, #061c1b30);
+  box-shadow: inset 0 1px 0#a7ffe51c;
+  min-height: 0;
+}
+.premium-confirm .confirm-medallion {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  font-weight: 800;
+  color: #baffdc;
+  border: 2px solid #6bffbb;
+  background: radial-gradient(circle at 35% 20%, #237b56, #0a3528 65%, #031c18);
+  box-shadow:
+    inset 0 0 0 3px #0a2d25,
+    inset 0 0 12px #39f5a348,
+    0 0 13px #21e99b40;
+  text-shadow: 0 0 8px #5affb3;
+}
+.premium-confirm .confirm-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+#chargePage .premium-confirm strong {
+  font-size: clamp(17px, 5vw, 24px);
+  line-height: 1.12;
+  white-space: nowrap;
+  letter-spacing: -0.035em;
+}
+#chargePage .premium-confirm .actual-times {
+  font-size: clamp(13px, 3.8vw, 19px);
+  line-height: 1.2;
+  color: #f0fff8;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 350px) {
+  #chargePage .premium-confirm {
+    gap: 8px;
+    padding: 6px;
+  }
+  .premium-confirm .confirm-medallion {
+    width: 40px;
+    height: 40px;
+    font-size: 23px;
+  }
+}
+
+/* ---------- Settings: fourth tab and hint ---------- */
+.settings-tabs {
+  grid-template-columns: repeat(4, 1fr);
+}
+.settings-hint {
+  font-size: 12px;
+  color: #93b2a8;
+  margin: 10px 2px 0;
+  line-height: 1.35;
+}
+
+.charge-plan-card .tariff-head.solo {
+  justify-content: center;
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1>Tonight’s Charge</h1>
+    <button class="settings-open" id="openSettings">Settings</button>
+    <div class="flare"></div>
+  </header>
+  <nav class="app-tabs" aria-label="Main screens">
+    <button id="chargeTab" aria-selected="true">Charge</button
+    ><button id="journeyTab" aria-selected="false">Journey</button>
+  </nav>
+  <div id="chargePage" class="charge-page">
+    <div class="gauge">
+      <canvas id="dial" role="img" aria-label="Target driving range 265 miles"></canvas>
+    </div>
+    <div class="range-breakdown" id="rangeBreakdown">
+      <div class="range-tile inline-unit">
+        <span>RIGHT NOW</span><b id="nowMiles">40</b><small>miles in car</small>
+      </div>
+      <div class="range-tile inline-unit"><span>CHEAP OVERNIGHT</span><b id="cheapMiles">+130</b></div>
+      <div class="range-tile inline-unit">
+        <span>PEAK TOP-UP</span><b id="peakMiles">+40</b><small>miles at peak rate</small>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span>Add</span><b id="added">133 mi</b></div>
+      <div class="stat"><span>Charge time</span><b id="duration">4h 10m</b></div>
+      <div class="stat"><span>Est. cost</span><b id="cost">£3.24</b></div>
+    </div>
+    <section class="charge-plan-card">
+      <div class="tariff-head" id="scheduleWindowRow">
+        <span>CHEAP ELECTRICITY HOURS</span><strong id="scheduleWindow">00:30 – 05:30</strong>
+      </div>
+      <div class="charge-options" id="plans"></div>
+    </section>
+    <section class="current-section">
+      <div class="battery-title">
+        <span>Current charge</span><strong id="currentLabel">40% · 132 mi</strong>
+      </div>
+      <div class="battery-wrap">
+        <div
+          class="battery"
+          id="current"
+          role="slider"
+          tabindex="0"
+          aria-label="Current battery charge"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="40"
+        >
+          <div class="cells" id="currentCells"></div>
+          <span class="battery-percent" id="currentPercent" aria-hidden="true"></span>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="battery-title"><span>Target charge</span><strong id="targetLabel">80%</strong></div>
+      <div class="battery-wrap">
+        <div
+          class="battery"
+          id="target"
+          role="slider"
+          tabindex="0"
+          aria-label="Target battery charge"
+          aria-valuemin="40"
+          aria-valuemax="100"
+          aria-valuenow="80"
+        >
+          <div class="cells" id="cells"></div>
+          <span class="battery-percent" id="targetPercent" aria-hidden="true"></span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <section id="journeyPage" class="journey-page" hidden>
+    <div class="journey-summary">
+      <div class="journey-hero">
+        <small id="jProfitLabel">Estimated journey profit / loss</small>
+        <div class="profit" id="jProfit">£0.00</div>
+        <div class="jline">
+          <div><span>Company pays</span><b id="jIncome">£0.00</b></div>
+          <div><span>Electricity used</span><b id="jCost">£0.00</b></div>
+          <div><span>Distance</span><b id="jMilesTop">350 mi</b></div>
+        </div>
+      </div>
+      <div class="jtrack" id="jTrack"></div>
+      <div class="jlegend">
+        <div style="color: #55f9b5"><b id="jCheapMiles">0 mi</b>Home cheap · <span id="jCheapRate">7p</span></div>
+        <div style="color: #ff646b"><b id="jPeakMiles">0 mi</b>Home peak · <span id="jPeakRate">7p</span></div>
+        <div style="color: #52bdff"><b id="jPublicMiles">0 mi</b>Public · <span id="jPublicRate">15p</span></div>
+      </div>
+      <div class="jstatus" id="jStatus"></div>
+    </div>
+    <div class="journey-scroll">
+      <div id="journeyControls"></div>
+      <div class="jpublic"><strong>Public charging</strong><button id="addStop">+ Add charger</button></div>
+      <div id="publicControls" hidden>
+        <div class="stopnav">
+          <button id="prevStop" aria-label="Previous charger">‹</button><strong id="stopTitle"></strong
+          ><button id="nextStop" aria-label="Next charger">›</button><button id="removeStop">Remove</button>
+        </div>
+        <div id="stopSliders"></div>
+      </div>
+      <div class="jnote" id="jNote">
+        Costs are allocated to energy used on this journey, not unused charge. Home miles earn 7p; public
+        miles earn 15p.
+      </div>
+    </div>
+  </section>
+</main>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle">
+  <div class="settings-head">
+    <h2 id="settingsTitle">Settings</h2>
+    <button class="done" id="doneSettings">Done</button>
+  </div>
+  <div class="settings-tabs" role="tablist">
+    <button role="tab" data-page="vehicle" aria-selected="true">Vehicle</button
+    ><button role="tab" data-page="tariff" aria-selected="false">Tariff</button
+    ><button role="tab" data-page="hours" aria-selected="false">Hours</button
+    ><button role="tab" data-page="mileage" aria-selected="false">Mileage</button>
+  </div>
+  <section class="settings-panel" id="vehiclePanel">
+    <div id="vehicleControls"></div>
+    <div class="setting-summary">Estimated full battery range<strong id="fullRange"></strong></div>
+    <p class="settings-hint">Charging efficiency is the share of wall electricity that reaches the battery. Home 7 kW charging is typically 85–92%.</p>
+  </section>
+  <section class="settings-panel" id="tariffPanel" hidden>
+    <div id="tariffControls"></div>
+    <div class="setting-summary">Prices in pence per kWh</div>
+  </section>
+  <section class="settings-panel" id="hoursPanel" hidden>
+    <div id="hoursControls"></div>
+    <div class="setting-summary">
+      <div id="hoursSummary"></div>
+      <div class="day-track" id="dayTrack"></div>
+      <div class="day-labels"><span>00:00</span><span>12:00</span><span>24:00</span></div>
+    </div>
+  </section>
+  <section class="settings-panel" id="mileagePanel" hidden>
+    <div id="mileageControls"></div>
+    <div class="setting-summary">What work pays per mile, by where the car was charged</div>
+  </section>
+  <p class="settings-footer" id="saveStatus">Settings saved on this device</p>
+</dialog>
+<script>
+const $ = (id) => document.getElementById(id);
+// ---------- Settings (saved on this device) ----------
+const defaults = {
+  battery: 84, // usable kWh
+  eff: 3.5, // driving miles per kWh
+  kw: 7.4, // charger power at the wall
+  chargeEff: 90, // % of wall energy that reaches the battery
+  cheapRate: 9.4, // p/kWh
+  peakRate: 33.32, // p/kWh
+  cheapStart: 30, // minutes after midnight
+  cheapEnd: 330,
+  homeMileRate: 7, // p per mile claimed for home-charged miles
+  publicMileRate: 15, // p per mile claimed for public-charged miles
+};
+let cfg = { ...defaults };
+const storageKey = "tonights-charge-settings-v1";
+const journeyKey = "tonights-charge-journey-v1";
+try {
+  const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+  for (const k of Object.keys(defaults)) if (Number.isFinite(saved[k])) cfg[k] = saved[k];
+} catch (e) {}
+
+// ---------- Charge state ----------
+let q = 16, // current %
+  p = 90, // target %
+  autoTarget = true;
+const fullMiles = () => cfg.battery * cfg.eff;
+const batteryKw = () => (cfg.kw * cfg.chargeEff) / 100; // power actually stored
+const wallFactor = () => 100 / cfg.chargeEff; // wall kWh per stored kWh
+const cheapMinutes = () => (cfg.cheapEnd - cfg.cheapStart + 1440) % 1440;
+// The cheap window, assuming the car is plugged in before it starts.
+const cheapWindow = () => ({ start: cfg.cheapStart, minutes: cheapMinutes() });
+const overnightPct = () =>
+  Math.min(100, q + ((batteryKw() * cheapWindow().minutes) / 60 / cfg.battery) * 100);
+const saveSettings = () => {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(cfg));
+    $("saveStatus").textContent = "Settings saved on this device";
+  } catch (e) {
+    $("saveStatus").textContent = "Settings apply now; this browser does not allow local saving";
+  }
+};
+for (const id of ["cells", "currentCells"])
+  for (let i = 0; i < 20; i++) $(id).insertAdjacentHTML("beforeend", '<div class="cell"></div>');
+function dial(miles) {
+  const c = $("dial"),
+    rect = c.getBoundingClientRect(),
+    w = rect.width,
+    h = rect.height;
+  if (!w || !h) return;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = Math.round(w * dpr);
+  c.height = Math.round(h * dpr);
+  const x = c.getContext("2d");
+  x.scale(dpr, dpr);
+  const cx = w / 2,
+    cy = h - 29,
+    r = Math.min(w * 0.385, cy - 25),
+    full = fullMiles(),
+    scaleMax = Math.max(50, Math.ceil(full / 50) * 50),
+    major = scaleMax > 400 ? 100 : 50,
+    minor = major / 5,
+    ang = (v) => Math.PI + (Math.PI * v) / scaleMax;
+  const current = (full * q) / 100,
+    cheapEnd = (full * Math.min(p, overnightPct())) / 100,
+    target = (full * p) / 100;
+  const width = Math.max(9, r * 0.1);
+  const bands = [
+    [0, current, "#087bd9", "#59e6ff"],
+    [current, cheapEnd, "#00a65b", "#65ffbf"],
+    [cheapEnd, target, "#bf1e36", "#ff9296"],
+    [target, scaleMax, "#21363e", "#53717a"],
+  ];
+  for (const [a, b, lo, hi] of bands) {
+    if (b - a < 1e-6) continue;
+    let g = x.createLinearGradient(0, cy - r, 0, cy);
+    g.addColorStop(0, hi);
+    g.addColorStop(0.4, lo);
+    g.addColorStop(0.8, lo);
+    g.addColorStop(1, hi);
+    x.lineCap = "butt";
+    x.lineWidth = width;
+    x.strokeStyle = g;
+    x.shadowColor = lo;
+    x.shadowBlur = lo === "#21363e" ? 0 : 10;
+    x.beginPath();
+    x.arc(cx, cy, r, ang(a), ang(b));
+    x.stroke();
+    x.shadowBlur = 0;
+    x.lineWidth = 1.1;
+    x.strokeStyle = hi;
+    x.beginPath();
+    x.arc(cx, cy, r + width / 2 - 0.8, ang(a), ang(b));
+    x.stroke();
+  }
+  for (let n = 0; n <= scaleMax; n += minor) {
+    const a = ang(n),
+      isMajor = n % major === 0 || n === scaleMax,
+      outer = r - width / 2 - 4,
+      inner = outer - (isMajor ? 10 : 5);
+    x.lineWidth = isMajor ? 2 : 1;
+    x.strokeStyle = isMajor ? "#edf9f6" : n <= target ? "#6bafa0" : "#50636b";
+    x.beginPath();
+    x.moveTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+    x.lineTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+    x.stroke();
+    if (isMajor) {
+      x.fillStyle = "#e9f3f2";
+      x.font = "650 " + Math.max(10, w * 0.034) + "px system-ui";
+      x.textAlign = "center";
+      x.textBaseline = "middle";
+      // Optical alignment: push each label out by half its own extent along the radial
+      // direction, so the visible gap to the arc is equal for "0", "150" and "300".
+      const tw = x.measureText(n).width,
+        th = Math.max(10, w * 0.034) * 0.72,
+        gap = 9,
+        extent = (Math.abs(Math.cos(a)) * tw) / 2 + (Math.abs(Math.sin(a)) * th) / 2,
+        rr = r + width / 2 + gap + extent;
+      x.fillText(n, cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    }
+  }
+  x.textAlign = "center";
+  x.textBaseline = "middle";
+  x.font = "800 " + Math.min(w * 0.26, r * 0.81) * 0.9 + "px system-ui";
+  let silver = x.createLinearGradient(0, cy - r * 0.75, 0, cy);
+  silver.addColorStop(0, "#ffffff");
+  silver.addColorStop(0.65, "#d7eeeb");
+  silver.addColorStop(1, "#8fbeb3");
+  x.fillStyle = silver;
+  x.shadowColor = "#00e99b55";
+  x.shadowBlur = 12;
+  x.fillText(miles, cx, cy - r * 0.33);
+  x.shadowBlur = 0;
+  x.fillStyle = "#eaf9f4";
+  x.font = "650 " + Math.max(10, w * 0.033) + "px system-ui";
+  x.fillText("MILES · AFTER CHARGING", cx, cy + 13);
+  c.setAttribute("aria-label", "Estimated range after charging " + miles + " miles");
+}
+function paintCells(id, bounds) {
+  const colors = [
+    ["#70dcff", "#079cf5", "#0752ad"],
+    ["#80ffd0", "#04db88", "#007143"],
+    ["#ffadb0", "#f84457", "#a20c24"],
+    ["#435d67", "#203840", "#0b1b22"],
+  ];
+  document.querySelectorAll("#" + id + " .cell").forEach((el, i) => {
+    const start = i * 5,
+      end = start + 5;
+    el.classList.toggle("charged", start < bounds[2]);
+    el.style.setProperty("--cell-index", i);
+    let stops = [],
+      prev = 0;
+    for (let j = 0; j < bounds.length; j++) {
+      const next = Math.max(0, Math.min(100, (bounds[j] - start) * 20));
+      if (next > prev) {
+        let [top, mid, bot] = colors[j];
+        stops.push(mid + " " + prev + "%", mid + " " + next + "%");
+        prev = next;
+      }
+    }
+    if (prev < 100) stops.push(colors[3][1] + " " + prev + "%", colors[3][1] + " 100%");
+    el.style.background =
+      "linear-gradient(180deg,#ffffff65 0%,#ffffff10 23%,#00000000 45%,#00000065 100%),linear-gradient(90deg," +
+      stops.join(",") +
+      ")";
+    el.style.boxShadow =
+      "inset 0 1px 2px #ffffff70,inset 0 -2px 4px #0008,0 0 5px " +
+      (start < bounds[0]
+        ? "#159fff55"
+        : start < bounds[1]
+          ? "#1cf5a444"
+          : start < bounds[2]
+            ? "#ff435544"
+            : "transparent");
+  });
+}
+function time(m) {
+  m = ((Math.round(m) % 1440) + 1440) % 1440;
+  return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+}
+function dur(m) {
+  m = Math.round(m);
+  return Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m";
+}
+function plan(title, start, end, parts) {
+  const early = title === "Start early";
+  const green = parts.find((p) => p[0] === "green")?.[2] || 0;
+  const red = parts.find((p) => p[0] === "red")?.[2] || 0;
+  const total = green + red;
+  const boundary = total ? (parts[0][2] / total) * 100 : 0;
+  const first = early ? "#ef344d" : "#0bc88b",
+    second = early ? "#0bc88b" : "#ef344d";
+  const cells = Array.from({ length: 20 }, (_, i) => {
+    const f = Math.max(0, Math.min(100, (boundary - i * 5) * 20));
+    return `<i style="background:linear-gradient(180deg,#ffffff65,transparent 50%,#00000045),linear-gradient(90deg,${first} ${f}%,${second} ${f}%)"></i>`;
+  }).join("");
+  return `<div class="plan-option"><div class="option-line"><span class="option-name">${title}</span><div class="option-clock"><b class="${early ? "peak-time" : "cheap-time"}">${time(start)}</b><span>–</span><b class="${early ? "cheap-time" : "peak-time"}">${time(end)}</b></div></div><div class="option-bar" role="img" aria-label="${early ? "Peak then cheap" : "Cheap then peak"}: ${dur(red)} peak, ${dur(green)} cheap">${cells}</div></div>`;
+}
+function cheapOnlyPlan(start, end, spareMin) {
+  // When the charge fills the whole window, the header already shows the times.
+  const fillsWindow = spareMin < 0.5;
+  return `<div class="cheap-confirm premium-confirm"><div class="confirm-medallion" aria-hidden="true">✓</div><div class="confirm-copy"><strong>All on cheap rate</strong>${fillsWindow ?'<div class="actual-times">No peak-rate charging</div>' : `<div class="actual-times"><span>Charge</span> ${time(start)} <span>–</span> ${time(end)}</div>`}</div></div>`;
+}
+function render() {
+  if (autoTarget) p = overnightPct();
+  else p = Math.max(q, Math.min(100, p));
+  const battery = cfg.battery,
+    eff = cfg.eff,
+    rate = batteryKw(),
+    win = cheapWindow(),
+    windowM = cheapMinutes(),
+    energy = ((p - q) / 100) * battery, // kWh into the battery
+    cheapKwh = Math.min(energy, (rate * win.minutes) / 60),
+    peakKwh = Math.max(0, energy - cheapKwh),
+    limit = q + (cheapKwh / battery) * 100,
+    total = (energy / rate) * 60,
+    cheapM = (cheapKwh / rate) * 60,
+    peakM = (peakKwh / rate) * 60,
+    cost = (((cheapKwh * cfg.cheapRate + peakKwh * cfg.peakRate) / 100) * wallFactor()),
+    m = Math.round((fullMiles() * p) / 100),
+    start = Math.round((fullMiles() * q) / 100);
+  $("targetLabel").textContent = m + " mi";
+  $("currentPercent").textContent = q + "%";
+  $("targetPercent").textContent = Number(p.toFixed(1)) + "%";
+  $("currentLabel").textContent = start + " mi";
+  $("added").textContent = Math.round(energy * eff) + " mi";
+  $("duration").textContent = dur(total);
+  $("cost").textContent = "£" + cost.toFixed(2);
+  paintCells("currentCells", [q, q, q, 100]);
+  paintCells("cells", [q, limit, p, 100]);
+  $("nowMiles").textContent = start;
+  $("cheapMiles").textContent = "+" + Math.round(cheapKwh * eff);
+  $("peakMiles").textContent = "+" + Math.round(peakKwh * eff);
+  $("rangeBreakdown").classList.toggle("nopeak", peakKwh < 1e-8);
+  const plans = $("plans");
+  $("scheduleWindow").textContent = time(cfg.cheapStart) + " – " + time(cfg.cheapEnd);
+  plans.classList.toggle("single", peakKwh < 1e-8 || windowM === 0 || total > 1440);
+  if (total < 1e-8) {
+    plans.innerHTML = '<div class="cheap-confirm"><strong>No charging needed</strong></div>';
+  } else if (windowM === 0) {
+    plans.classList.add("single");
+    plans.innerHTML =
+      '<div class="cheap-confirm"><strong>Set different cheap start and end times</strong></div>';
+  } else if (total > 1440) {
+    plans.classList.add("single");
+    plans.innerHTML =
+      '<div class="cheap-confirm"><strong>More than one day required</strong><div>Single-night estimate only.</div></div>';
+  } else if (peakKwh < 1e-8) {
+    plans.innerHTML = cheapOnlyPlan(win.start, win.start + total, Math.max(0, win.minutes - total));
+  } else {
+    const g = (cheapM / total) * 100,
+      r = 100 - g,
+      windowEnd = win.start + win.minutes;
+    plans.innerHTML =
+      plan("Start early", windowEnd - total, windowEnd, [
+        ["red", r, peakM],
+        ["green", g, cheapM],
+      ]) +
+      plan("Finish late", win.start, win.start + total, [
+        ["green", g, cheapM],
+        ["red", r, peakM],
+      ]) +
+      `<div class="duration-line"><span class="cheap-time">Cheap · ${dur(cheapM)}</span><span class="peak-time">Peak · ${dur(peakM)}</span></div>`;
+  }
+  $("current").setAttribute("aria-valuenow", q);
+  $("target").setAttribute("aria-valuenow", p);
+  $("target").setAttribute("aria-valuemin", q);
+  dial(m);
+}
+function set(id, v) {
+  v = Math.round(Math.max(0, Math.min(100, v)));
+  if (id === "current") {
+    q = v;
+    autoTarget = true;
+    p = overnightPct();
+  } else {
+    autoTarget = false;
+    p = Math.max(q, v);
+  }
+  render();
+}
+for (const id of ["current", "target"]) {
+  const el = $(id);
+  const drag = (e) => {
+    let b = el.querySelector(".cells").getBoundingClientRect();
+    set(id, ((e.clientX - b.left) / b.width) * 100);
+  };
+  el.addEventListener("pointerdown", (e) => {
+    el.setPointerCapture(e.pointerId);
+    drag(e);
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (el.hasPointerCapture(e.pointerId)) drag(e);
+  });
+  el.addEventListener("keydown", (e) => {
+    let v = id === "current" ? q : p;
+    if (["ArrowLeft", "ArrowDown", "ArrowRight", "ArrowUp", "Home", "End"].includes(e.key)) {
+      e.preventDefault();
+      set(
+        id,
+        e.key === "Home"
+          ? 0
+          : e.key === "End"
+            ? 100
+            : v + (["ArrowLeft", "ArrowDown"].includes(e.key) ? -1 : 1),
+      );
+    }
+  });
+}
+new ResizeObserver(() => {
+  dial(Math.round((fullMiles() * p) / 100));
+}).observe($("dial"));
+
+render();
+
+const pence = (v) => +v.toFixed(1) + "p";
+const specs = [
+  ["vehicle", "battery", "Usable battery capacity", 20, 150, 1, (v) => v.toFixed(0) + " kWh"],
+  ["vehicle", "eff", "Driving efficiency", 1, 6, 0.1, (v) => v.toFixed(1) + " mi/kWh"],
+  ["vehicle", "kw", "Charger power", 1, 22, 0.1, (v) => v.toFixed(1) + " kW"],
+  ["vehicle", "chargeEff", "Charging efficiency", 70, 100, 1, (v) => v.toFixed(0) + "%"],
+  ["tariff", "cheapRate", "Off-peak price", 0, 50, 0.01, (v) => v.toFixed(2) + "p/kWh"],
+  ["tariff", "peakRate", "Peak price", 0, 100, 0.01, (v) => v.toFixed(2) + "p/kWh"],
+  ["hours", "cheapStart", "Cheap rate starts", 0, 1435, 5, time],
+  ["hours", "cheapEnd", "Cheap rate ends", 0, 1435, 5, time],
+  ["mileage", "homeMileRate", "Home-charged miles", 0, 50, 0.1, (v) => pence(v) + "/mile"],
+  ["mileage", "publicMileRate", "Public-charged miles", 0, 50, 0.1, (v) => pence(v) + "/mile"],
+];
+function syncSettings() {
+  for (const [, key, , , , , fmt] of specs) {
+    $("setting-" + key).value = cfg[key];
+    $("value-" + key).textContent = fmt(cfg[key]);
+  }
+  $("fullRange").textContent = Math.round(fullMiles()) + " miles";
+  $("hoursSummary").innerHTML =
+    '<span class="cheap">Cheap ' +
+    dur(cheapMinutes()) +
+    '</span> &nbsp; · &nbsp; <span class="peak">Peak ' +
+    dur(1440 - cheapMinutes()) +
+    "</span>";
+  let points = [0, cfg.cheapStart, cfg.cheapEnd, 1440].sort((a, b) => a - b);
+  $("dayTrack").replaceChildren();
+  for (let i = 1; i < points.length; i++) {
+    let a = points[i - 1],
+      b = points[i],
+      mid = (a + b) / 2;
+    if (b === a) continue;
+    let on =
+      cfg.cheapStart < cfg.cheapEnd
+        ? mid >= cfg.cheapStart && mid < cfg.cheapEnd
+        : cfg.cheapStart > cfg.cheapEnd && (mid >= cfg.cheapStart || mid < cfg.cheapEnd);
+    let el = document.createElement("i");
+    el.className = on ? "greenbar" : "redbar";
+    el.style.width = (b - a) / 14.4 + "%";
+    $("dayTrack").append(el);
+  }
+}
+for (const [page, key, label, min, max, step, fmt] of specs) {
+  cfg[key] = Math.max(min, Math.min(max, cfg[key]));
+  let el = document.createElement("div");
+  el.className = "setting";
+  el.innerHTML = `<label for="setting-${key}">${label}<output id="value-${key}"></output></label><div class="adjust"><button type="button" aria-label="Decrease ${label}">−</button><input type="range" id="setting-${key}" min="${min}" max="${max}" step="${step}"><button type="button" aria-label="Increase ${label}">+</button></div>`;
+  $(page + "Controls").append(el);
+  let input = $("setting-" + key);
+  function update(v) {
+    cfg[key] = Math.max(min, Math.min(max, Number(v.toFixed(2))));
+    syncSettings();
+    render();
+    renderJourney();
+    saveSettings();
+  }
+  input.addEventListener("input", () => update(Number(input.value)));
+  let buttons = el.querySelectorAll("button");
+  buttons[0].onclick = () => update(cfg[key] - step);
+  buttons[1].onclick = () => update(cfg[key] + step);
+}
+for (const b of document.querySelectorAll(".settings-tabs button"))
+  b.onclick = () => {
+    for (const x of document.querySelectorAll(".settings-tabs button")) {
+      let on = x === b;
+      x.setAttribute("aria-selected", on);
+      $(x.dataset.page + "Panel").hidden = !on;
+    }
+  };
+$("openSettings").onclick = () => {
+  syncSettings();
+  $("settingsDialog").showModal();
+};
+$("doneSettings").onclick = () => {
+  $("settingsDialog").close();
+  render();
+};
+syncSettings();
+render();
+
+// ---------- Journey (saved on this device) ----------
+const journey = { miles: 350, cheap: 0, peak: 0, stops: [] };
+try {
+  const saved = JSON.parse(localStorage.getItem(journeyKey) || "{}");
+  for (const k of ["miles", "cheap", "peak"]) if (Number.isFinite(saved[k])) journey[k] = Math.max(0, saved[k]);
+  if (Array.isArray(saved.stops))
+    journey.stops = saved.stops
+      .filter((s) => s && Number.isFinite(s.kwh) && Number.isFinite(s.rate))
+      .map((s) => ({ kwh: s.kwh, rate: s.rate }));
+} catch (e) {}
+const saveJourney = () => {
+  try {
+    localStorage.setItem(journeyKey, JSON.stringify(journey));
+  } catch (e) {}
+};
+let stopIndex = 0;
+const cash = (v) => (v < 0 ? "−" : "") + "£" + Math.abs(v).toFixed(2);
+const fmtEnergy = (v) => v.toFixed(1) + " kWh · " + Math.round(v * cfg.eff) + " mi";
+const fmtHome = (v) => Math.round(v * cfg.eff) + " mi · " + v.toFixed(1) + " kWh";
+function journeyCalc() {
+  let remaining = journey.miles / cfg.eff;
+  const take = (v) => {
+    let k = Math.min(remaining, Math.max(0, v));
+    remaining -= k;
+    return k;
+  };
+  let cheap = take(journey.cheap),
+    peak = take(journey.peak),
+    pub = 0,
+    publicCost = 0;
+  for (const st of journey.stops) {
+    let k = take(st.kwh);
+    pub += k;
+    publicCost += (k * st.rate) / 100;
+  }
+  // Home energy is billed at the wall, so include charging losses. Public kWh are billed as delivered.
+  let income = (((cheap + peak) * cfg.homeMileRate + pub * cfg.publicMileRate) * cfg.eff) / 100,
+    cost = ((cheap * cfg.cheapRate + peak * cfg.peakRate) / 100) * wallFactor() + publicCost;
+  return { cheap, peak, pub, remaining, income, cost, profit: income - cost };
+}
+function renderJourney() {
+  let r = journeyCalc(),
+    m = journey.miles;
+  for (const [id, v] of [
+    ["jIncome", cash(r.income)],
+    ["jCost", cash(r.cost)],
+    ["jProfit", cash(r.profit)],
+    ["jMilesTop", m + " mi"],
+    ["jCheapMiles", Math.round(r.cheap * cfg.eff) + " mi"],
+    ["jPeakMiles", Math.round(r.peak * cfg.eff) + " mi"],
+    ["jPublicMiles", Math.round(r.pub * cfg.eff) + " mi"],
+  ])
+    $(id).textContent = v;
+  $("jProfit").classList.toggle("loss", r.profit < 0);
+  let missing = r.remaining * cfg.eff;
+  $("jProfitLabel").textContent =
+    missing > 0.01 ? "Partial journey profit / loss" : "Estimated journey profit / loss";
+  $("jStatus").textContent =
+    missing > 0.01
+      ? Math.ceil(missing) + " miles still to account for · " + r.remaining.toFixed(1) + " kWh"
+      : m
+        ? "Journey fully covered"
+        : "Set journey distance";
+  $("jStatus").classList.toggle("covered", missing <= 0.01);
+  $("jTrack").replaceChildren();
+  for (const [k, color] of [
+    [r.cheap, "#18df96"],
+    [r.peak, "#ff5364"],
+    [r.pub, "#28aaff"],
+    [r.remaining, "#33474e"],
+  ]) {
+    let i = document.createElement("i");
+    i.style.width = (m ? ((k * cfg.eff) / m) * 100 : 0) + "%";
+    i.style.background = color;
+    $("jTrack").append(i);
+  }
+  for (const [key, fmt] of [
+    ["miles", (v) => v + " mi"],
+    ["cheap", fmtHome],
+    ["peak", fmtHome],
+  ]) {
+    let e = $("j-" + key);
+    if (e) {
+      e.max = key === "miles" ? 1000 : cfg.battery;
+      journey[key] = Math.min(+e.max, journey[key]);
+      e.value = journey[key];
+      $("jv-" + key).textContent = fmt(journey[key]);
+      if (key !== "miles") paintJourneyBattery(key, journey[key]);
+    }
+  }
+  if (journey.stops.length && $("jv-publicKwh")) {
+    let st = journey.stops[stopIndex];
+    $("jv-publicKwh").textContent = fmtEnergy(st.kwh);
+    $("jv-publicRate").textContent = st.rate.toFixed(1) + "p/kWh";
+  }
+  const home = pence(cfg.homeMileRate),
+    pub = pence(cfg.publicMileRate);
+  $("jCheapRate").textContent = $("jPeakRate").textContent = home;
+  $("jPublicRate").textContent = pub;
+  $("jNote").textContent =
+    `Costs are allocated to energy used on this journey, not unused charge. Home miles earn ${home}; public miles earn ${pub}. ` +
+    `Home costs include ${100 - cfg.chargeEff}% charging losses.`;
+  saveJourney();
+}
+function paintJourneyBattery(key, v) {
+  const el = $("jb-" + key);
+  if (!el) return;
+  const pct = Math.max(0, Math.min(100, (v / cfg.battery) * 100));
+  $("jbp-" + key).textContent = Math.round(pct) + "%";
+  el.setAttribute("aria-valuenow", Math.round(pct));
+  el.setAttribute("aria-valuetext", Math.round(pct) + " percent of battery capacity");
+  paintCells("jbc-" + key, key === "cheap" ? [0, pct, pct, 100] : [0, 0, pct, 100]);
+}
+function installJourneyBattery(el, input, key, get, change) {
+  const bar = document.createElement("div");
+  bar.className = "battery jbattery";
+  bar.id = "jb-" + key;
+  bar.tabIndex = 0;
+  bar.setAttribute("role", "slider");
+  bar.setAttribute(
+    "aria-label",
+    key === "cheap" ? "Home off-peak battery percentage" : "Home peak battery percentage",
+  );
+  bar.setAttribute("aria-valuemin", "0");
+  bar.setAttribute("aria-valuemax", "100");
+  bar.innerHTML =
+    '<div class="cells" id="jbc-' +
+    key +
+    '">' +
+    '<div class="cell"></div>'.repeat(20) +
+    '</div><span class="battery-percent" id="jbp-' +
+    key +
+    '" aria-hidden="true"></span>';
+  input.hidden = true;
+  input.style.display = "none";
+  input.after(bar);
+  const drag = (e) => {
+    const r = bar.querySelector(".cells").getBoundingClientRect();
+    let pct = Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 100);
+    change((pct * cfg.battery) / 100);
+  };
+  bar.onpointerdown = (e) => {
+    bar.setPointerCapture(e.pointerId);
+    drag(e);
+  };
+  bar.onpointermove = (e) => {
+    if (bar.hasPointerCapture(e.pointerId)) drag(e);
+  };
+  bar.onkeydown = (e) => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
+    e.preventDefault();
+    change(
+      e.key === "Home"
+        ? 0
+        : e.key === "End"
+          ? cfg.battery
+          : get() + ((["ArrowLeft", "ArrowDown"].includes(e.key) ? -1 : 1) * cfg.battery) / 100,
+    );
+  };
+  paintJourneyBattery(key, get());
+}
+function jSlider(parent, key, label, min, max, step, get, set, fmt) {
+  let el = document.createElement("div");
+  el.className = "jcontrol";
+  el.innerHTML = `<label for="j-${key}">${label}<output id="jv-${key}"></output></label><div class="adjust"><button aria-label="Decrease ${label}">−</button><input id="j-${key}" type="range" min="${min}" max="${max}" step="${step}"><button aria-label="Increase ${label}">+</button></div>`;
+  parent.append(el);
+  let input = el.querySelector("input");
+  input.value = get();
+  function change(v) {
+    set(Math.max(+input.min, Math.min(+input.max, Math.round(v * 100) / 100)));
+    input.value = get();
+    $("jv-" + key).textContent = fmt(get());
+    renderJourney();
+  }
+  input.oninput = () => change(+input.value);
+  let bs = el.querySelectorAll("button");
+  const home = key === "cheap" || key === "peak";
+  bs[0].onclick = () => change(get() - (home ? cfg.battery / 100 : step));
+  bs[1].onclick = () => change(get() + (home ? cfg.battery / 100 : step));
+  $("jv-" + key).textContent = fmt(get());
+  if (home) installJourneyBattery(el, input, key, get, change);
+}
+for (const [key, label, max, step, fmt] of [
+  ["miles", "Journey distance", 1000, 1, (v) => v + " mi"],
+  ["cheap", "Home off-peak charge", cfg.battery, 0.1, fmtHome],
+  ["peak", "Home peak charge", cfg.battery, 0.1, fmtHome],
+])
+  jSlider(
+    $("journeyControls"),
+    key,
+    label,
+    0,
+    max,
+    step,
+    () => journey[key],
+    (v) => {
+      journey[key] = v;
+      if (key === "cheap") journey.peak = Math.min(journey.peak, cfg.battery - v);
+      if (key === "peak") journey.cheap = Math.min(journey.cheap, cfg.battery - v);
+    },
+    fmt,
+  );
+function showStop() {
+  let n = journey.stops.length;
+  $("publicControls").hidden = !n;
+  if (!n) {
+    renderJourney();
+    return;
+  }
+  stopIndex = Math.max(0, Math.min(stopIndex, n - 1));
+  $("stopTitle").textContent = "Charger " + (stopIndex + 1) + " of " + n;
+  $("prevStop").disabled = stopIndex === 0;
+  $("nextStop").disabled = stopIndex === n - 1;
+  $("stopSliders").replaceChildren();
+  let st = journey.stops[stopIndex];
+  jSlider(
+    $("stopSliders"),
+    "publicKwh",
+    "Energy added",
+    0,
+    150,
+    0.1,
+    () => st.kwh,
+    (v) => (st.kwh = v),
+    fmtEnergy,
+  );
+  jSlider(
+    $("stopSliders"),
+    "publicRate",
+    "Public price",
+    0,
+    150,
+    0.1,
+    () => st.rate,
+    (v) => (st.rate = v),
+    (v) => v.toFixed(1) + "p/kWh",
+  );
+  renderJourney();
+}
+$("addStop").onclick = () => {
+  journey.stops.push({ kwh: 0, rate: 30 });
+  stopIndex = journey.stops.length - 1;
+  showStop();
+  $("publicControls").scrollIntoView({ block: "nearest", behavior: "auto" });
+};
+$("removeStop").onclick = () => {
+  journey.stops.splice(stopIndex, 1);
+  showStop();
+};
+$("prevStop").onclick = () => {
+  stopIndex--;
+  showStop();
+};
+$("nextStop").onclick = () => {
+  stopIndex++;
+  showStop();
+};
+function tab(j) {
+  $("chargePage").hidden = j;
+  $("journeyPage").hidden = !j;
+  $("chargeTab").setAttribute("aria-selected", !j);
+  $("journeyTab").setAttribute("aria-selected", j);
+  if (j) renderJourney();
+  else render();
+}
+$("chargeTab").onclick = () => tab(false);
+$("journeyTab").onclick = () => tab(true);
+$("settingsDialog").addEventListener("close", () => {
+  journey.cheap = Math.min(journey.cheap, cfg.battery);
+  journey.peak = Math.min(journey.peak, cfg.battery - journey.cheap);
+  renderJourney();
+});
+showStop();
+</script>
+</body>
+</html>
